@@ -1,0 +1,8 @@
+name: MineSkyFriendly
+version: '${version}'
+
+folia-supported: true
+
+main: net.minesky.mineskyfriendly.MineSkyFriendly
+api-version: '26.1.2'
+load: POSTWORLD
