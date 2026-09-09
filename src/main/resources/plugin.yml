@@ -9,3 +9,9 @@ load: POSTWORLD
 
 softdepend:
   - floodgate
+
+commands:
+  conquistas:
+    aliases:
+      - conquista
+      - achievments
