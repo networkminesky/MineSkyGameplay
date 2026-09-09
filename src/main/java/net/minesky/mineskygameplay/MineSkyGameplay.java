@@ -4,6 +4,7 @@ import io.papermc.paper.event.player.PlayerDeepSleepEvent;
 import io.papermc.paper.event.server.ServerResourcesReloadedEvent;
 import net.minesky.mineskygameplay.advancements.AdvancementsAPI;
 import net.minesky.mineskygameplay.advancements.command.ConquistasCommand;
+import net.minesky.mineskygameplay.advancements.hook.MythicHook;
 import net.minesky.mineskygameplay.advancements.loader.DynamicAdvancementLoader;
 import net.minesky.mineskygameplay.advancements.menu.BedrockMenuManager;
 import org.bukkit.WeatherType;
@@ -30,6 +31,10 @@ public final class MineSkyGameplay extends JavaPlugin implements Listener {
 
         if (getCommand("conquistas") != null) {
             getCommand("conquistas").setExecutor(new ConquistasCommand());
+        }
+
+        if(this.getServer().getPluginManager().isPluginEnabled("MythicMobs")) {
+            MythicHook.register(this);
         }
 
         this.getServer().getPluginManager().registerEvents(this, this);

@@ -8,6 +8,7 @@ folia-supported: true
 load: POSTWORLD
 
 softdepend:
+  - MythicMobs
   - floodgate
 
 commands:
