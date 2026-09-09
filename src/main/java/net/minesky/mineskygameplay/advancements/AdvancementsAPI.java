@@ -1,8 +1,8 @@
-package net.minesky.mineskyfriendly.advancements;
+package net.minesky.mineskygameplay.advancements;
 
-import net.minesky.mineskyfriendly.MineSkyFriendly;
-import net.minesky.mineskyfriendly.advancements.data.AdvancementModel;
-import net.minesky.mineskyfriendly.advancements.data.CategoryModel;
+import net.minesky.mineskygameplay.MineSkyGameplay;
+import net.minesky.mineskygameplay.advancements.data.AdvancementModel;
+import net.minesky.mineskygameplay.advancements.data.CategoryModel;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.advancement.Advancement;
@@ -17,13 +17,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AdvancementsAPI {
 
     private static AdvancementsAPI instance;
-    private final MineSkyFriendly plugin;
+    private final MineSkyGameplay plugin;
 
     private final Map<NamespacedKey, AdvancementModel> advancementsByKey = new ConcurrentHashMap<>();
     private final Map<String, NamespacedKey> aliasMap = new ConcurrentHashMap<>();
     private final Map<String, CategoryModel> categories = new LinkedHashMap<>();
 
-    public AdvancementsAPI(MineSkyFriendly plugin) {
+    public AdvancementsAPI(MineSkyGameplay plugin) {
         this.plugin = plugin;
         instance = this;
     }

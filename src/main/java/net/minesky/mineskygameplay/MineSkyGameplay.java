@@ -1,13 +1,11 @@
-package net.minesky.mineskyfriendly;
+package net.minesky.mineskygameplay;
 
 import io.papermc.paper.event.player.PlayerDeepSleepEvent;
 import io.papermc.paper.event.server.ServerResourcesReloadedEvent;
-import net.minesky.mineskyfriendly.advancements.AdvancementsAPI;
-import net.minesky.mineskyfriendly.advancements.command.ConquistasCommand;
-import net.minesky.mineskyfriendly.advancements.data.AdvancementFrame;
-import net.minesky.mineskyfriendly.advancements.data.AdvancementModel;
-import net.minesky.mineskyfriendly.advancements.loader.DynamicAdvancementLoader;
-import net.minesky.mineskyfriendly.advancements.menu.BedrockMenuManager;
+import net.minesky.mineskygameplay.advancements.AdvancementsAPI;
+import net.minesky.mineskygameplay.advancements.command.ConquistasCommand;
+import net.minesky.mineskygameplay.advancements.loader.DynamicAdvancementLoader;
+import net.minesky.mineskygameplay.advancements.menu.BedrockMenuManager;
 import org.bukkit.WeatherType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -16,7 +14,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public final class MineSkyFriendly extends JavaPlugin implements Listener {
+public final class MineSkyGameplay extends JavaPlugin implements Listener {
 
     private AdvancementsAPI api;
     private BedrockMenuManager menuManager;

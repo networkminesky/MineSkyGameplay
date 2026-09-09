@@ -1,6 +1,6 @@
-package net.minesky.mineskyfriendly.advancements.command;
+package net.minesky.mineskygameplay.advancements.command;
 
-import net.minesky.mineskyfriendly.advancements.AdvancementsAPI;
+import net.minesky.mineskygameplay.advancements.AdvancementsAPI;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;

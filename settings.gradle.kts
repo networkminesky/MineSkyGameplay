@@ -1,1 +1,1 @@
-rootProject.name = "MineSkyFriendly"
+rootProject.name = "MineSkyGameplay"

@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/MineSkyFriendly.main.iml" filepath="$PROJECT_DIR$/.idea/modules/MineSkyFriendly.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/MineSkyFriendly.test.iml" filepath="$PROJECT_DIR$/.idea/modules/MineSkyFriendly.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/MineSkyGameplay.main.iml" filepath="$PROJECT_DIR$/.idea/modules/MineSkyGameplay.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/MineSkyGameplay.test.iml" filepath="$PROJECT_DIR$/.idea/modules/MineSkyGameplay.test.iml" />
     </modules>
   </component>
 </project>

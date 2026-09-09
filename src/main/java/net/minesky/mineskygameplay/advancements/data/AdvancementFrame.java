@@ -1,4 +1,4 @@
-package net.minesky.mineskyfriendly.advancements.data;
+package net.minesky.mineskygameplay.advancements.data;
 
 public enum AdvancementFrame {
     TASK("Tarefa", "§a"),

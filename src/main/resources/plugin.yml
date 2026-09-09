@@ -1,5 +1,5 @@
-main: net.minesky.mineskyfriendly.MineSkyFriendly
-name: MineSkyFriendly
+main: net.minesky.mineskygameplay.MineSkyGameplay
+name: MineSkyGameplay
 api-version: '26.1.2'
 
 version: '${version}'

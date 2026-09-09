@@ -1,4 +1,4 @@
-package net.minesky.mineskyfriendly.advancements.loader;
+package net.minesky.mineskygameplay.advancements.loader;
 
 import io.papermc.paper.adventure.PaperAdventure;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -8,12 +8,11 @@ import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerAdvancementManager;
-import net.minesky.mineskyfriendly.MineSkyFriendly;
-import net.minesky.mineskyfriendly.advancements.AdvancementsAPI;
-import net.minesky.mineskyfriendly.advancements.data.AdvancementFrame;
-import net.minesky.mineskyfriendly.advancements.data.AdvancementModel;
-import net.minesky.mineskyfriendly.advancements.data.CategoryModel;
-import org.bukkit.Bukkit;
+import net.minesky.mineskygameplay.MineSkyGameplay;
+import net.minesky.mineskygameplay.advancements.AdvancementsAPI;
+import net.minesky.mineskygameplay.advancements.data.AdvancementFrame;
+import net.minesky.mineskygameplay.advancements.data.AdvancementModel;
+import net.minesky.mineskygameplay.advancements.data.CategoryModel;
 import org.bukkit.NamespacedKey;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.inventory.ItemStack;
@@ -23,10 +22,10 @@ import java.util.*;
 public class DynamicAdvancementLoader {
 
     private static final String TARGET_NAMESPACE = "minesky";
-    private final MineSkyFriendly plugin;
+    private final MineSkyGameplay plugin;
     private final AdvancementsAPI api;
 
-    public DynamicAdvancementLoader(MineSkyFriendly plugin, AdvancementsAPI api) {
+    public DynamicAdvancementLoader(MineSkyGameplay plugin, AdvancementsAPI api) {
         this.plugin = plugin;
         this.api = api;
     }

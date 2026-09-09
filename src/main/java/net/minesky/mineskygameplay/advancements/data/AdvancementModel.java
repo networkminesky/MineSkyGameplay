@@ -1,4 +1,4 @@
-package net.minesky.mineskyfriendly.advancements.data;
+package net.minesky.mineskygameplay.advancements.data;
 
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;

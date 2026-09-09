@@ -1,9 +1,9 @@
-package net.minesky.mineskyfriendly.advancements.menu;
+package net.minesky.mineskygameplay.advancements.menu;
 
-import net.minesky.mineskyfriendly.MineSkyFriendly;
-import net.minesky.mineskyfriendly.advancements.AdvancementsAPI;
-import net.minesky.mineskyfriendly.advancements.data.AdvancementModel;
-import net.minesky.mineskyfriendly.advancements.data.CategoryModel;
+import net.minesky.mineskygameplay.MineSkyGameplay;
+import net.minesky.mineskygameplay.advancements.AdvancementsAPI;
+import net.minesky.mineskygameplay.advancements.data.AdvancementModel;
+import net.minesky.mineskygameplay.advancements.data.CategoryModel;
 import org.bukkit.entity.Player;
 import org.geysermc.cumulus.form.SimpleForm;
 import org.geysermc.floodgate.api.FloodgateApi;
@@ -13,9 +13,9 @@ import java.util.List;
 
 public class BedrockMenuManager {
 
-    private final MineSkyFriendly plugin;
+    private final MineSkyGameplay plugin;
 
-    public BedrockMenuManager(MineSkyFriendly plugin) {
+    public BedrockMenuManager(MineSkyGameplay plugin) {
         this.plugin = plugin;
     }
 
