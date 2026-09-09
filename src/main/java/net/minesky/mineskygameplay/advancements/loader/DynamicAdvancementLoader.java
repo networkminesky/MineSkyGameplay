@@ -45,13 +45,11 @@ public class DynamicAdvancementLoader {
         ServerAdvancementManager manager = server.getAdvancements();
         Collection<AdvancementHolder> allAdvancements = manager.getAllAdvancements();
 
-        // Limpa o cache anterior para suportar reloads
         api.clearRegistry();
 
         Map<String, AdvancementHolder> rootMap = new HashMap<>();
         List<AdvancementHolder> childAdvancements = new ArrayList<>();
 
-        // Passo 1: Separar raízes de categorias e conquistas filhas
         for (AdvancementHolder holder : allAdvancements) {
             Identifier id = holder.id();
             if (!id.getNamespace().equalsIgnoreCase(TARGET_NAMESPACE)) {
@@ -67,7 +65,6 @@ public class DynamicAdvancementLoader {
             }
         }
 
-        // Passo 2: Registrar Categorias Dinâmicas a partir das raízes
         for (Map.Entry<String, AdvancementHolder> entry : rootMap.entrySet()) {
             String categoryId = entry.getKey();
             AdvancementHolder rootHolder = entry.getValue();
@@ -90,7 +87,6 @@ public class DynamicAdvancementLoader {
             api.registerCategory(new CategoryModel(categoryId, title, color, desc));
         }
 
-        // Passo 3: Registrar Conquistas Filhas
         int registeredCount = 0;
         for (AdvancementHolder holder : childAdvancements) {
             Identifier id = holder.id();
@@ -100,7 +96,6 @@ public class DynamicAdvancementLoader {
             String categoryId = slashIndex != -1 ? path.substring(0, slashIndex) : "geral";
             String advId = slashIndex != -1 ? path.substring(slashIndex + 1) : path;
 
-            // Garante que a categoria exista mesmo se o root não foi configurado
             if (api.getCategory(categoryId) == null) {
                 api.registerCategory(new CategoryModel(
                         categoryId,
@@ -125,7 +120,6 @@ public class DynamicAdvancementLoader {
                         PaperAdventure.asAdventure(display.getDescription())
                 );
 
-                // Mapeamento do tipo de frame NMS -> Frame do Plugin
                 AdvancementType type = display.getType();
                 if (type == AdvancementType.CHALLENGE) {
                     frame = AdvancementFrame.CHALLENGE;
@@ -135,11 +129,9 @@ public class DynamicAdvancementLoader {
                     frame = AdvancementFrame.TASK;
                 }
 
-                // Ícone NMS convertido para Bukkit ItemStack
                 icon = CraftItemStack.asBukkitCopy(display.getIcon());
             }
 
-            // Recompensa de XP direto do NMS
             int xpReward = holder.value().rewards().experience();
 
             NamespacedKey key = new NamespacedKey(TARGET_NAMESPACE, path);
