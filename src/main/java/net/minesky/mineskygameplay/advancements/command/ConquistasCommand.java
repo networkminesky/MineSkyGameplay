@@ -21,7 +21,7 @@ public class ConquistasCommand implements CommandExecutor {
         if (api.isBedrockPlayer(player)) {
             api.openBedrockMenu(player);
         } else {
-            player.sendMessage("§cVocê está no §bJava Edition§f! Pressione a tecla §e[ L ] §fpara abrir o menu nativo de conquistas. Esse comando é de uso exclusivo para jogadores Bedrock.");
+            player.sendMessage("§cVocê está no §lJava Edition§c! Pressione a tecla §lL §cpara abrir o menu nativo de conquistas. Esse comando é de uso exclusivo para jogadores §lBedrock§c.");
         }
         return true;
     }
