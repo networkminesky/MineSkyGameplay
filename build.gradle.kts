@@ -6,10 +6,14 @@ plugins {
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+
+    maven("https://repo.opencollab.dev/main/")
 }
 
 dependencies {
     paperweight.foliaDevBundle("26.1.2.build.+")
+
+    compileOnly("org.geysermc.floodgate:api:2.2.3-SNAPSHOT")
 }
 
 java {
