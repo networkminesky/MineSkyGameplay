@@ -1,0 +1,6 @@
+# Opção pra desligar o chat vanilla completamente
+# útil para quando precisa dar unload/load no MineSkyCore
+disable-chat: true
+# Opção pra desligar a mensagem de join e quit,
+# MSCore já desliga, mas opção útil quando ele é unloaded.
+disable-join-quit: true
