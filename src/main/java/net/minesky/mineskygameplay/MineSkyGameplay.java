@@ -9,6 +9,7 @@ import net.minesky.mineskygameplay.advancements.command.ConquistasCommand;
 import net.minesky.mineskygameplay.advancements.hook.MythicHook;
 import net.minesky.mineskygameplay.advancements.loader.DynamicAdvancementLoader;
 import net.minesky.mineskygameplay.advancements.menu.BedrockMenuManager;
+import net.minesky.mineskygameplay.locatorapi.LocatorManager;
 import org.bukkit.WeatherType;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
@@ -40,7 +41,14 @@ public final class MineSkyGameplay extends JavaPlugin implements Listener {
         disableChat = config.getBoolean("disable-chat", true);
         disableJoinQuit = config.getBoolean("disable-join-quit", true);
 
+        getLogger().info("[LocatorAPI] Inicializando LocatorAPI");
+        LocatorManager.init(this);
+        getLogger().info("[LocatorAPI] LocatorAPI carregada com sucesso no Folia!");
+
+        getLogger().info("[AdvancementsAPI] Inicializando AdvancementsAPI");
         this.api = new AdvancementsAPI(this);
+        getLogger().info("[AdvancementsAPI] AdvancementsAPI carregada com sucesso!");
+
         this.menuManager = new BedrockMenuManager(this);
         this.loader = new DynamicAdvancementLoader(this, api);
 
@@ -55,6 +63,11 @@ public final class MineSkyGameplay extends JavaPlugin implements Listener {
         }
 
         this.getServer().getPluginManager().registerEvents(this, this);
+    }
+
+    @Override
+    public void onDisable() {
+        LocatorManager.shutdown(this);
     }
 
     @EventHandler

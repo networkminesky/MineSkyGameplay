@@ -4,3 +4,26 @@ disable-chat: true
 # Opção pra desligar a mensagem de join e quit,
 # MSCore já desliga, mas opção útil quando ele é unloaded.
 disable-join-quit: true
+
+# =========================================================
+#             Configuração da LocatorAPI (Folia)
+# =========================================================
+
+# Mundos onde a Locator Bar ficará SEMPRE LIGADA por padrão.
+# Todos os jogadores se enxergam normalmente, a não ser que
+# sejam ocultados explicitamente pela API.
+always-enabled-worlds:
+  - "minesky_the_end"
+
+# Mundos onde a Locator Bar ficará SEMPRE DESLIGADA por padrão.
+# A barra exibe a XP normal do jogador. Outros jogadores só
+# aparecerão na barra caso um método da API libere explicitamente.
+always-disabled-worlds:
+  - "minesky_nether"
+  - "minesky_overworld"
+
+# Modo para mundos não listados acima (ENABLED ou DISABLED)
+default-world-mode: "ENABLED"
+
+# Ativar mensagens de debug no console (útil para testes de pacotes)
+debug: false
