@@ -8,6 +8,11 @@ import net.minesky.gameplay.core.advancements.hook.MythicHook;
 import net.minesky.gameplay.core.locator.LocatorManager;
 import net.minesky.gameplay.features.events.ChatListener;
 import net.minesky.gameplay.features.events.PlayerLifecycleListener;
+import net.minesky.gameplay.features.homes.HomeTeleportCommand;
+import net.minesky.gameplay.features.homes.HomesCommand;
+import net.minesky.gameplay.features.homes.HomesListener;
+import net.minesky.gameplay.features.homes.HomesMenuManager;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -17,6 +22,7 @@ public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener 
     private LocatorManager locatorManager;
     private AdvancementsManager advancementsManager;
     private DynamicAdvancementLoader advancementLoader;
+    private HomesMenuManager homesMenuManager;
 
     @Override
     public void onEnable() {
@@ -25,56 +31,66 @@ public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener 
         boolean disableChat = getConfig().getBoolean("disable-chat", true);
         boolean disableJoinQuit = getConfig().getBoolean("disable-join-quit", true);
 
-        // 1. Inicializa o Core da LocatorAPI
         getLogger().info("[LocatorAPI] Inicializando LocatorAPI...");
         this.locatorManager = new LocatorManager(this);
         this.locatorManager.start();
 
-        // 2. Inicializa o Core da AdvancementsAPI
         getLogger().info("[AdvancementsAPI] Inicializando AdvancementsAPI...");
         this.advancementsManager = new AdvancementsManager(this);
         this.advancementsManager.start();
 
-        // Carrega Conquistas de Datapack
         this.advancementLoader = new DynamicAdvancementLoader(this, advancementsManager);
         this.advancementLoader.loadFromDatapack();
 
-        // 3. Registra Comandos e Hooks Externos
+        this.homesMenuManager = new HomesMenuManager(this);
+        HomesCommand homesCmd = new HomesCommand(homesMenuManager);
+        HomeTeleportCommand homeTpCmd = new HomeTeleportCommand(homesMenuManager);
+
         if (getCommand("conquistas") != null) {
             getCommand("conquistas").setExecutor(new ConquistasCommand());
         }
+
+        registerCommand("homes", homesCmd, homesCmd);
+        registerCommand("terrenos", homesCmd, homesCmd);
+        registerCommand("salvos", homesCmd, homesCmd);
+        registerCommand("home", homeTpCmd, homeTpCmd);
 
         if (getServer().getPluginManager().isPluginEnabled("MythicMobs")) {
             MythicHook.register(this);
         }
 
-        // 4. Registra Recursos Internos de Gameplay
         getServer().getPluginManager().registerEvents(new ChatListener(disableChat), this);
         getServer().getPluginManager().registerEvents(new PlayerLifecycleListener(this, disableJoinQuit), this);
+        getServer().getPluginManager().registerEvents(new HomesListener(this, homesMenuManager), this);
         getServer().getPluginManager().registerEvents(this, this);
 
         getLogger().info("MineSkyGameplay inicializado com sucesso no Folia!");
     }
 
+    private void registerCommand(String name, org.bukkit.command.CommandExecutor executor, org.bukkit.command.TabCompleter completer) {
+        PluginCommand cmd = getCommand(name);
+        if (cmd != null) {
+            cmd.setExecutor(executor);
+            cmd.setTabCompleter(completer);
+        }
+    }
+
     @Override
     public void onDisable() {
-        // Encerra LocatorAPI e desinjeta Netty de todos os canais com segurança
         if (this.locatorManager != null) {
             this.locatorManager.stop();
             this.locatorManager = null;
         }
 
-        // Encerra AdvancementsAPI e desregistra Services
         if (this.advancementsManager != null) {
             this.advancementsManager.stop();
             this.advancementsManager = null;
         }
 
-        // Cancela todas as tarefas remanescentes no Folia associadas a este plugin
+        this.homesMenuManager = null;
+
         getServer().getAsyncScheduler().cancelTasks(this);
         getServer().getGlobalRegionScheduler().cancelTasks(this);
-
-        // Desregistra qualquer serviço residual no Bukkit
         getServer().getServicesManager().unregisterAll(this);
 
         getLogger().info("MineSkyGameplay descarregado com sucesso!");
@@ -94,5 +110,9 @@ public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener 
 
     public AdvancementsManager getAdvancementsManager() {
         return advancementsManager;
+    }
+
+    public HomesMenuManager getHomesMenuManager() {
+        return homesMenuManager;
     }
 }

@@ -19,3 +19,9 @@ commands:
     aliases:
       - conquista
       - achievments
+  homes:
+    description: Abre o menu de homes e terrenos
+    aliases: [ terrenos, salvos ]
+  home:
+    description: Teleporta-se até um local salvo
+    aliases: [ salvo ]
