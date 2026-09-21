@@ -38,7 +38,7 @@ public class HomesListener implements Listener {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         Inventory inv = event.getInventory();
-        if (!(inv.getHolder() instanceof HomesMenuHolder holder)) {
+        if (!(inv.getHolder() instanceof HomesMenuManager.HomesMenuHolder holder)) {
             return;
         }
 
