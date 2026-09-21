@@ -322,8 +322,7 @@ public class HomesMenuManager {
         if (filter != null && !filter.isBlank()) {
             searchLore.add(deserialize("<gray>Filtro ativo: <aqua>\"" + filter + "\"</aqua></gray>"));
             searchLore.add(Component.empty());
-            searchLore.add(deserialize("<yellow>▶ Botão Esquerdo: <white>Alterar filtro</white></yellow>"));
-            searchLore.add(deserialize("<red>▶ Botão Direito: <white>Remover filtro</white></red>"));
+            searchLore.add(deserialize("<red>▶ Clique: <white>Remover filtro</white></red>"));
         } else {
             searchLore.add(deserialize("<gray>Nenhum filtro aplicado.</gray>"));
             searchLore.add(Component.empty());
@@ -348,6 +347,7 @@ public class HomesMenuManager {
         infoMeta.lore(List.of(
                 deserialize("<gray>Homes: <gradient:#43e97b:#38f9d7><b>" + homesCount + "</b></gradient></gray>"),
                 deserialize("<gray>Terrenos: <gradient:#f6d365:#fda085><b>" + claimsCount + "</b></gradient></gray>"),
+                Component.empty(),
                 deserialize("<gray>Páginas: <white>" + (page + 1) + " / " + totalPages + "</white></gray>")
         ));
         infoItem.setItemMeta(infoMeta);
@@ -360,7 +360,7 @@ public class HomesMenuManager {
             createMeta.lore(List.of(
                     deserialize("<gray>Salve sua posição atual rapidamente.</gray>"),
                     Component.empty(),
-                    deserialize("<white>Você pode usar <yellow>/sethome <nome></yellow></white>"),
+                    deserialize("<white>ℹ Também pode usar <yellow>/sethome <nome></yellow></white>"),
                     deserialize("<green>▶ Clique para definir pelo chat</green>")
             ));
             createItem.setItemMeta(createMeta);

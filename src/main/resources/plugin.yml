@@ -21,7 +21,7 @@ commands:
       - achievments
   homes:
     description: Abre o menu de homes e terrenos
-    aliases: [ terrenos, salvos ]
+    aliases: [ "terrenos", "salvos", "casa" ]
   home:
     description: Teleporta-se até um local salvo
-    aliases: [ salvo ]
+    aliases: [ "salvo", "casas" ]

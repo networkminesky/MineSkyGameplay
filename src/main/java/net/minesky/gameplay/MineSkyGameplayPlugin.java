@@ -51,8 +51,6 @@ public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener 
         }
 
         registerCommand("homes", homesCmd, homesCmd);
-        registerCommand("terrenos", homesCmd, homesCmd);
-        registerCommand("salvos", homesCmd, homesCmd);
         registerCommand("home", homeTpCmd, homeTpCmd);
 
         if (getServer().getPluginManager().isPluginEnabled("MythicMobs")) {

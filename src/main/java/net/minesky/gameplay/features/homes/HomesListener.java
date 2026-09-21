@@ -12,7 +12,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
@@ -72,14 +71,14 @@ public class HomesListener implements Listener {
         }
 
         if (slot == 47) {
-            if (event.getClick() == ClickType.RIGHT) {
+            if (holder.getFilter() != null && !holder.getFilter().isBlank()) {
                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.8f);
                 menuManager.openMenu(player, holder.getTargetUUID(), holder.getTargetName(), 0, null);
                 return;
             }
 
             player.closeInventory();
-            menuManager.getSearchPrompts().put(player.getUniqueId(), holder.getFilter() == null ? "" : holder.getFilter());
+            menuManager.getSearchPrompts().put(player.getUniqueId(), "");
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.5f);
             player.sendMessage(mm.deserialize("<gradient:#00c6ff:#0072ff><b>[Busca]</b></gradient> <gray>Digite no chat o termo para buscar (ou <red>cancelar</red>):</gray>"));
             return;
