@@ -1,4 +1,4 @@
-package net.minesky.mineskygameplay.locatorapi;
+package net.minesky.gameplay.core.locator;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -36,7 +36,6 @@ public class LocatorListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onWorldChange(PlayerChangedWorldEvent event) {
         Player player = event.getPlayer();
-        // Garante execução na thread correta da nova região no Folia
         player.getScheduler().run(plugin, task -> {
             manager.handleWorldSwitch(player, event.getFrom(), player.getWorld());
         }, null);

@@ -1,4 +1,4 @@
-package net.minesky.mineskygameplay.advancements.hook;
+package net.minesky.gameplay.core.advancements.hook;
 
 import io.lumine.mythic.api.adapters.AbstractEntity;
 import io.lumine.mythic.api.config.MythicLineConfig;
@@ -9,8 +9,8 @@ import io.lumine.mythic.api.skills.placeholders.PlaceholderString;
 import io.lumine.mythic.bukkit.events.MythicMechanicLoadEvent;
 import io.lumine.mythic.core.skills.SkillExecutor;
 import io.lumine.mythic.core.skills.SkillMechanic;
-import net.minesky.mineskygameplay.MineSkyGameplay;
-import net.minesky.mineskygameplay.advancements.AdvancementsAPI;
+import net.minesky.gameplay.MineSkyGameplayPlugin;
+import net.minesky.gameplay.api.advancements.AdvancementsAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -20,7 +20,7 @@ import java.io.File;
 
 public class MythicHook implements Listener {
 
-    public static void register(MineSkyGameplay plugin) {
+    public static void register(MineSkyGameplayPlugin plugin) {
         Bukkit.getPluginManager().registerEvents(new MythicHook(), plugin);
     }
 
@@ -57,7 +57,11 @@ public class MythicHook implements Listener {
             if (target.isPlayer()) {
                 Player p = (Player) target.getBukkitEntity();
                 String resolvedKey = this.key.get(data, target);
-                AdvancementsAPI.get().grantAsync(p, resolvedKey);
+
+                AdvancementsAPI api = AdvancementsAPI.get();
+                if (api != null) {
+                    api.grantAsync(p, resolvedKey);
+                }
             }
             return SkillResult.SUCCESS;
         }

@@ -1,4 +1,4 @@
-package net.minesky.mineskygameplay.advancements.data;
+package net.minesky.gameplay.api.advancements.model;
 
 public record CategoryModel(
         String id,

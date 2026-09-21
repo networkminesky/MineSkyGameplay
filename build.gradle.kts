@@ -10,6 +10,11 @@ repositories {
     maven("https://repo.opencollab.dev/main/")
 
     maven(url = "https://mvn.lumine.io/repository/maven-public/")
+
+    // Essentials
+    maven("https://repo.essentialsx.net/releases/")
+
+    maven("https://jitpack.io")
 }
 
 dependencies {
@@ -18,6 +23,13 @@ dependencies {
     compileOnly("io.lumine:Mythic-Dist:5.12.1")
 
     compileOnly("org.geysermc.floodgate:api:2.2.3-SNAPSHOT")
+
+    // Essentials
+    compileOnly("net.essentialsx:EssentialsX:2.20.1") {
+        isTransitive = false
+    }
+
+    compileOnly("com.github.networkminesky.mineskyclaims:huskclaims-bukkit:1.5.13-RELEASE")
 }
 
 java {

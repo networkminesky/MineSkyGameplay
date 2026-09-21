@@ -1,4 +1,4 @@
-package net.minesky.mineskygameplay.locatorapi;
+package net.minesky.gameplay.core.locator;
 
 import com.mojang.datafixers.util.Either;
 import io.netty.channel.Channel;

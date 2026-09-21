@@ -1,6 +1,6 @@
-package net.minesky.mineskygameplay.advancements.command;
+package net.minesky.gameplay.core.advancements.command;
 
-import net.minesky.mineskygameplay.advancements.AdvancementsAPI;
+import net.minesky.gameplay.api.advancements.AdvancementsAPI;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -17,6 +17,10 @@ public class ConquistasCommand implements CommandExecutor {
         }
 
         AdvancementsAPI api = AdvancementsAPI.get();
+        if (api == null) {
+            player.sendMessage("§cO sistema de conquistas não está disponível no momento.");
+            return true;
+        }
 
         if (api.isBedrockPlayer(player)) {
             api.openBedrockMenu(player);

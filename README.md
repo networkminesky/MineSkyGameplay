@@ -99,9 +99,10 @@ depend:
 ## 📚 Referência Completa de Métodos
 
 Importe a interface:
+
 ```java
-import net.minesky.mineskygameplay.locatorapi.LocatorAPI;
-import net.minesky.mineskygameplay.locatorapi.LocatorWorldMode;
+import net.minesky.gameplay.api.locator.LocatorAPI;
+import net.minesky.gameplay.api.locator.LocatorWorldMode;
 ```
 
 ---

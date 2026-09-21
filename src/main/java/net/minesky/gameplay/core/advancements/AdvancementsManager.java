@@ -1,38 +1,44 @@
-package net.minesky.mineskygameplay.advancements;
+package net.minesky.gameplay.core.advancements;
 
-import net.minesky.mineskygameplay.MineSkyGameplay;
-import net.minesky.mineskygameplay.advancements.data.AdvancementModel;
-import net.minesky.mineskygameplay.advancements.data.CategoryModel;
+import net.minesky.gameplay.MineSkyGameplayPlugin;
+import net.minesky.gameplay.api.advancements.AdvancementsAPI;
+import net.minesky.gameplay.api.advancements.model.AdvancementModel;
+import net.minesky.gameplay.api.advancements.model.CategoryModel;
+import net.minesky.gameplay.core.advancements.menu.BedrockMenuManager;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.ServicePriority;
 import org.geysermc.floodgate.api.FloodgateApi;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class AdvancementsAPI {
+public class AdvancementsManager implements AdvancementsAPI {
 
-    private static AdvancementsAPI instance;
-    private final MineSkyGameplay plugin;
+    private final MineSkyGameplayPlugin plugin;
+    private final BedrockMenuManager menuManager;
 
     private final Map<NamespacedKey, AdvancementModel> advancementsByKey = new ConcurrentHashMap<>();
     private final Map<String, NamespacedKey> aliasMap = new ConcurrentHashMap<>();
     private final Map<String, CategoryModel> categories = new LinkedHashMap<>();
 
-    public AdvancementsAPI(MineSkyGameplay plugin) {
+    public AdvancementsManager(MineSkyGameplayPlugin plugin) {
         this.plugin = plugin;
-        instance = this;
+        this.menuManager = new BedrockMenuManager(plugin);
     }
 
-    public static AdvancementsAPI get() {
-        if (instance == null) {
-            throw new IllegalStateException("AdvancementsAPI não foi inicializada!");
-        }
-        return instance;
+    public void start() {
+        Bukkit.getServicesManager().register(AdvancementsAPI.class, this, plugin, ServicePriority.Normal);
+    }
+
+    public void stop() {
+        Bukkit.getServicesManager().unregister(AdvancementsAPI.class, this);
+        clearRegistry();
     }
 
     public synchronized void clearRegistry() {
@@ -41,18 +47,22 @@ public class AdvancementsAPI {
         categories.clear();
     }
 
+    @Override
     public void registerCategory(CategoryModel category) {
         categories.put(category.id().toLowerCase(), category);
     }
 
+    @Override
     public CategoryModel getCategory(String id) {
         return categories.get(id.toLowerCase());
     }
 
+    @Override
     public Collection<CategoryModel> getAllCategories() {
         return Collections.unmodifiableCollection(categories.values());
     }
 
+    @Override
     public void registerAdvancement(AdvancementModel model) {
         NamespacedKey key = model.namespacedKey();
         advancementsByKey.put(key, model);
@@ -61,6 +71,7 @@ public class AdvancementsAPI {
         aliasMap.put(key.toString().toLowerCase(), key);
     }
 
+    @Override
     public CompletableFuture<Boolean> grantAsync(Player player, String keyOrId) {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         if (player == null || !player.isOnline()) {
@@ -78,6 +89,7 @@ public class AdvancementsAPI {
         return future;
     }
 
+    @Override
     public boolean grant(Player player, String keyOrId) {
         if (player == null || !player.isOnline()) return false;
         NamespacedKey key = resolveKey(keyOrId);
@@ -104,6 +116,7 @@ public class AdvancementsAPI {
         return true;
     }
 
+    @Override
     public boolean hasAdvancement(Player player, String keyOrId) {
         if (player == null || !player.isOnline()) return false;
         NamespacedKey key = resolveKey(keyOrId);
@@ -115,6 +128,7 @@ public class AdvancementsAPI {
         return player.getAdvancementProgress(adv).isDone();
     }
 
+    @Override
     public int getCategoryCompletedCount(Player player, String categoryId) {
         int count = 0;
         for (AdvancementModel model : advancementsByKey.values()) {
@@ -125,6 +139,7 @@ public class AdvancementsAPI {
         return count;
     }
 
+    @Override
     public int getTotalCompletedCount(Player player) {
         int count = 0;
         for (AdvancementModel model : advancementsByKey.values()) {
@@ -135,23 +150,32 @@ public class AdvancementsAPI {
         return count;
     }
 
+    @Override
     public boolean isBedrockPlayer(Player player) {
-        return FloodgateApi.getInstance().isFloodgatePlayer(player.getUniqueId());
+        try {
+            return FloodgateApi.getInstance().isFloodgatePlayer(player.getUniqueId());
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
+    @Override
     public void openBedrockMenu(Player player) {
-        plugin.getMenuManager().openMainMenu(player);
+        menuManager.openMainMenu(player);
     }
 
+    @Override
     public NamespacedKey resolveKey(String query) {
         if (query == null) return null;
         return aliasMap.get(query.toLowerCase());
     }
 
+    @Override
     public Collection<AdvancementModel> getAllAdvancements() {
         return Collections.unmodifiableCollection(advancementsByKey.values());
     }
 
+    @Override
     public List<AdvancementModel> getByCategory(String categoryId) {
         List<AdvancementModel> list = new ArrayList<>();
         for (AdvancementModel model : advancementsByKey.values()) {
@@ -160,5 +184,9 @@ public class AdvancementsAPI {
             }
         }
         return list;
+    }
+
+    public BedrockMenuManager getMenuManager() {
+        return menuManager;
     }
 }

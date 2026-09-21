@@ -1,5 +1,6 @@
-package net.minesky.mineskygameplay.locatorapi;
+package net.minesky.gameplay.api.locator;
 
+import net.minesky.gameplay.core.locator.LocatorManager;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -21,14 +22,7 @@ public interface LocatorAPI {
      */
     static LocatorAPI get() {
         RegisteredServiceProvider<LocatorAPI> provider = Bukkit.getServicesManager().getRegistration(LocatorAPI.class);
-        if (provider != null) {
-            return provider.getProvider();
-        }
-        try {
-            return LocatorManager.getInstance();
-        } catch (Throwable ignored) {
-            return null;
-        }
+        return provider != null ? provider.getProvider() : null;
     }
 
     // ==========================================

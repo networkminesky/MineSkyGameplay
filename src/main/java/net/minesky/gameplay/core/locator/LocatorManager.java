@@ -1,9 +1,11 @@
-package net.minesky.mineskygameplay.locatorapi;
+package net.minesky.gameplay.core.locator;
 
 import io.netty.channel.Channel;
 import net.minecraft.network.protocol.game.ClientboundTrackedWaypointPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minesky.gameplay.api.locator.LocatorAPI;
+import net.minesky.gameplay.api.locator.LocatorWorldMode;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -12,6 +14,7 @@ import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.ServicePriority;
 
 import java.lang.reflect.Method;
 import java.util.*;
@@ -19,98 +22,54 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class LocatorManager implements LocatorAPI {
 
-    private static volatile LocatorManager instance;
     private final Plugin plugin;
-
-    // Configuração de mundos
     private final Set<String> alwaysEnabledWorlds = ConcurrentHashMap.newKeySet();
     private final Set<String> alwaysDisabledWorlds = ConcurrentHashMap.newKeySet();
     private boolean defaultWorldEnabled = true;
     private boolean debug = false;
 
-    // Regras de visibilidade
     private final Map<UUID, Set<UUID>> allowedTargets = new ConcurrentHashMap<>();
     private final Map<UUID, Set<UUID>> hiddenTargets = new ConcurrentHashMap<>();
     private final Set<UUID> globallyHiddenPlayers = ConcurrentHashMap.newKeySet();
     private final Set<UUID> globallyRevealedPlayers = ConcurrentHashMap.newKeySet();
 
-    // Grupos / Partys
     private final Map<String, Set<UUID>> groups = new ConcurrentHashMap<>();
     private final Map<UUID, String> playerToGroup = new ConcurrentHashMap<>();
     private final Map<String, Boolean> groupMutualVisibility = new ConcurrentHashMap<>();
 
-    // Controle de pacotes recebidos pelo cliente (ViewerUUID -> Set<TargetUUID>)
     private final Map<UUID, Set<UUID>> clientTrackedMap = new ConcurrentHashMap<>();
 
     private LocatorListener listener;
 
-    private LocatorManager(Plugin plugin) {
+    public LocatorManager(Plugin plugin) {
         this.plugin = plugin;
         loadConfig();
     }
 
-    // Dentro do método init(Plugin plugin) em LocatorManager.java:
-    public static synchronized void init(Plugin plugin) {
-        if (instance == null) {
-            instance = new LocatorManager(plugin);
-            instance.register(plugin);
+    public void start() {
+        Bukkit.getServicesManager().register(LocatorAPI.class, this, plugin, ServicePriority.Normal);
 
-            // REGISTRO NO SERVICES MANAGER DO BUKKIT
-            Bukkit.getServicesManager().register(
-                    LocatorAPI.class,
-                    instance,
-                    plugin,
-                    org.bukkit.plugin.ServicePriority.Normal
-            );
-        }
-    }
-
-    // Dentro do método shutdown(Plugin plugin) em LocatorManager.java:
-    public static synchronized void shutdown(Plugin plugin) {
-        if (instance != null) {
-            // DESREGISTRA DO SERVICES MANAGER
-            Bukkit.getServicesManager().unregister(LocatorAPI.class, instance);
-
-            instance.unregister(plugin);
-            instance = null;
-        }
-    }
-
-    public static LocatorManager getInstance() {
-        if (instance == null) {
-            throw new IllegalStateException("LocatorAPI não foi inicializada na classe principal do plugin!");
-        }
-        return instance;
-    }
-
-    private void register(Plugin plugin) {
         this.listener = new LocatorListener(this, plugin);
         Bukkit.getPluginManager().registerEvents(this.listener, plugin);
 
-        // Injeta os interceptores nos jogadores online (suporte perfeito a Plugman / Reload)
         for (Player player : Bukkit.getOnlinePlayers()) {
             LocatorPacketInterceptor.inject(player, this);
             handleJoin(player);
         }
     }
 
-    private void unregister(Plugin plugin) {
-        // Desregistra eventos
+    public void stop() {
+        Bukkit.getServicesManager().unregister(LocatorAPI.class, this);
+
         if (this.listener != null) {
             HandlerList.unregisterAll(this.listener);
             this.listener = null;
         }
 
-        // Remove os interceptores do Netty de TODOS os jogadores
         for (Player player : Bukkit.getOnlinePlayers()) {
             LocatorPacketInterceptor.uninject(player);
         }
 
-        // Cancela tarefas no Folia
-        plugin.getServer().getAsyncScheduler().cancelTasks(plugin);
-        plugin.getServer().getGlobalRegionScheduler().cancelTasks(plugin);
-
-        // Limpa todas as coleções estáticas
         allowedTargets.clear();
         hiddenTargets.clear();
         globallyHiddenPlayers.clear();
@@ -132,14 +91,10 @@ public class LocatorManager implements LocatorAPI {
         FileConfiguration config = plugin.getConfig();
 
         List<String> enabled = config.getStringList("always-enabled-worlds");
-        if (enabled != null) {
-            alwaysEnabledWorlds.addAll(enabled);
-        }
+        if (enabled != null) alwaysEnabledWorlds.addAll(enabled);
 
         List<String> disabled = config.getStringList("always-disabled-worlds");
-        if (disabled != null) {
-            alwaysDisabledWorlds.addAll(disabled);
-        }
+        if (disabled != null) alwaysDisabledWorlds.addAll(disabled);
 
         this.defaultWorldEnabled = config.getString("default-world-mode", "ENABLED").equalsIgnoreCase("ENABLED");
         this.debug = config.getBoolean("debug", false);
@@ -148,10 +103,6 @@ public class LocatorManager implements LocatorAPI {
     public boolean isDebug() {
         return debug;
     }
-
-    // ==========================================
-    //           Implementação da API
-    // ==========================================
 
     @Override
     public boolean isWorldEnabled(World world) {
@@ -218,45 +169,24 @@ public class LocatorManager implements LocatorAPI {
     public boolean canSee(UUID viewerId, UUID targetId, World world) {
         if (viewerId.equals(targetId)) return true;
 
-        // 1. Jogador oculto globalmente (Stealth / Vanish)
-        if (globallyHiddenPlayers.contains(targetId)) {
-            return false;
-        }
+        if (globallyHiddenPlayers.contains(targetId)) return false;
+        if (globallyRevealedPlayers.contains(targetId)) return true;
 
-        // 2. Jogador revelado globalmente (Bounty / Alvo)
-        if (globallyRevealedPlayers.contains(targetId)) {
-            return true;
-        }
-
-        // 3. Checagem de overrides específicos do visualizador
         Set<UUID> hidden = hiddenTargets.get(viewerId);
-        if (hidden != null && hidden.contains(targetId)) {
-            return false;
-        }
+        if (hidden != null && hidden.contains(targetId)) return false;
 
         Set<UUID> allowed = allowedTargets.get(viewerId);
-        if (allowed != null && allowed.contains(targetId)) {
-            return true;
-        }
+        if (allowed != null && allowed.contains(targetId)) return true;
 
-        // 4. Checagem de Grupo / Party
         String viewerGroup = playerToGroup.get(viewerId);
         String targetGroup = playerToGroup.get(targetId);
         if (viewerGroup != null && viewerGroup.equals(targetGroup)) {
-            if (groupMutualVisibility.getOrDefault(viewerGroup, true)) {
-                return true;
-            }
+            if (groupMutualVisibility.getOrDefault(viewerGroup, true)) return true;
         }
 
-        // 5. Verificação baseada nas regras de mundo
         String worldName = world.getName();
-        if (alwaysDisabledWorlds.contains(worldName)) {
-            return false; // Desativado por padrão no mundo
-        }
-
-        if (alwaysEnabledWorlds.contains(worldName)) {
-            return true; // Ativado por padrão no mundo
-        }
+        if (alwaysDisabledWorlds.contains(worldName)) return false;
+        if (alwaysEnabledWorlds.contains(worldName)) return true;
 
         return defaultWorldEnabled;
     }
@@ -281,14 +211,11 @@ public class LocatorManager implements LocatorAPI {
             allowedTargets.computeIfAbsent(vId, k -> ConcurrentHashMap.newKeySet()).add(tId);
             Set<UUID> hidden = hiddenTargets.get(vId);
             if (hidden != null) hidden.remove(tId);
-
-            // Sincroniza e envia waypoint do target para o viewer
             syncWaypoint(target);
         } else {
             hiddenTargets.computeIfAbsent(vId, k -> ConcurrentHashMap.newKeySet()).add(tId);
             Set<UUID> allowed = allowedTargets.get(vId);
             if (allowed != null) allowed.remove(tId);
-
             markUntracked(vId, tId);
             sendUntrackPacket(viewer, tId);
         }
@@ -388,9 +315,7 @@ public class LocatorManager implements LocatorAPI {
             for (UUID uuid : members) {
                 playerToGroup.remove(uuid);
                 Player p = Bukkit.getPlayer(uuid);
-                if (p != null && p.isOnline()) {
-                    syncWaypoint(p);
-                }
+                if (p != null && p.isOnline()) syncWaypoint(p);
             }
         }
     }
@@ -413,9 +338,7 @@ public class LocatorManager implements LocatorAPI {
         String currentGroup = playerToGroup.remove(pId);
         if (currentGroup != null) {
             Set<UUID> set = groups.get(currentGroup);
-            if (set != null) {
-                set.remove(pId);
-            }
+            if (set != null) set.remove(pId);
         }
     }
 
@@ -437,16 +360,10 @@ public class LocatorManager implements LocatorAPI {
         if (members != null) {
             for (UUID uuid : members) {
                 Player p = Bukkit.getPlayer(uuid);
-                if (p != null && p.isOnline()) {
-                    syncWaypoint(p);
-                }
+                if (p != null && p.isOnline()) syncWaypoint(p);
             }
         }
     }
-
-    // ==========================================
-    //           Controle Interno
-    // ==========================================
 
     public boolean hasTracked(UUID viewerId, UUID targetId) {
         Set<UUID> set = clientTrackedMap.get(viewerId);
@@ -459,9 +376,7 @@ public class LocatorManager implements LocatorAPI {
 
     public void markUntracked(UUID viewerId, UUID targetId) {
         Set<UUID> set = clientTrackedMap.get(viewerId);
-        if (set != null) {
-            set.remove(targetId);
-        }
+        if (set != null) set.remove(targetId);
     }
 
     public void sendUntrackPacket(Player viewer, UUID targetId) {
@@ -475,7 +390,6 @@ public class LocatorManager implements LocatorAPI {
     public void syncWaypoint(Player player) {
         if (player == null || !player.isOnline()) return;
 
-        // Agendamento seguro com o Entity Scheduler do Folia
         player.getScheduler().run(plugin, scheduledTask -> {
             try {
                 ServerPlayer sp = ((CraftPlayer) player).getHandle();
@@ -513,14 +427,9 @@ public class LocatorManager implements LocatorAPI {
         clientTrackedMap.remove(player.getUniqueId());
 
         if (isWorldDisabled(to)) {
-            // Em mundos desativados, garante remoção de waypoints remanescentes de outros jogadores
             for (Player other : to.getPlayers()) {
-                if (!canSee(player, other)) {
-                    sendUntrackPacket(player, other.getUniqueId());
-                }
-                if (!canSee(other, player)) {
-                    sendUntrackPacket(other, player.getUniqueId());
-                }
+                if (!canSee(player, other)) sendUntrackPacket(player, other.getUniqueId());
+                if (!canSee(other, player)) sendUntrackPacket(other, player.getUniqueId());
             }
         } else {
             syncWaypoint(player);

@@ -1,4 +1,4 @@
-package net.minesky.mineskygameplay.locatorapi;
+package net.minesky.gameplay.api.locator;
 
 public enum LocatorWorldMode {
     ALWAYS_ENABLED,

@@ -1,5 +1,6 @@
-main: net.minesky.mineskygameplay.MineSkyGameplay
+main: net.minesky.gameplay.MineSkyGameplayPlugin
 name: MineSkyGameplay
+
 api-version: '26.1.2'
 
 version: '${version}'
@@ -10,6 +11,8 @@ load: POSTWORLD
 softdepend:
   - MythicMobs
   - floodgate
+  - Essentials
+  - HuskClaims
 
 commands:
   conquistas:

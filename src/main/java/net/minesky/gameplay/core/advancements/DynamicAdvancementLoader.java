@@ -1,4 +1,4 @@
-package net.minesky.mineskygameplay.advancements.loader;
+package net.minesky.gameplay.core.advancements;
 
 import io.papermc.paper.adventure.PaperAdventure;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -8,31 +8,27 @@ import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerAdvancementManager;
-import net.minesky.mineskygameplay.MineSkyGameplay;
-import net.minesky.mineskygameplay.advancements.AdvancementsAPI;
-import net.minesky.mineskygameplay.advancements.data.AdvancementFrame;
-import net.minesky.mineskygameplay.advancements.data.AdvancementModel;
-import net.minesky.mineskygameplay.advancements.data.CategoryModel;
+import net.minesky.gameplay.api.advancements.model.AdvancementFrame;
+import net.minesky.gameplay.api.advancements.model.AdvancementModel;
+import net.minesky.gameplay.api.advancements.model.CategoryModel;
 import org.bukkit.NamespacedKey;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
 
 import java.util.*;
 
 public class DynamicAdvancementLoader {
 
     private static final String TARGET_NAMESPACE = "minesky";
-    private final MineSkyGameplay plugin;
-    private final AdvancementsAPI api;
+    private final Plugin plugin;
+    private final AdvancementsManager manager;
 
-    public DynamicAdvancementLoader(MineSkyGameplay plugin, AdvancementsAPI api) {
+    public DynamicAdvancementLoader(Plugin plugin, AdvancementsManager manager) {
         this.plugin = plugin;
-        this.api = api;
+        this.manager = manager;
     }
 
-    /**
-     * Lê diretamente do ServerAdvancementManager do NMS e popula a API.
-     */
     public synchronized void loadFromDatapack() {
         plugin.getLogger().info("Iniciando leitura dinâmica das conquistas do namespace '" + TARGET_NAMESPACE + "' via NMS...");
 
@@ -42,21 +38,19 @@ public class DynamicAdvancementLoader {
             return;
         }
 
-        ServerAdvancementManager manager = server.getAdvancements();
-        Collection<AdvancementHolder> allAdvancements = manager.getAllAdvancements();
+        ServerAdvancementManager serverAdvManager = server.getAdvancements();
+        Collection<AdvancementHolder> allAdvancements = serverAdvManager.getAllAdvancements();
 
-        api.clearRegistry();
+        manager.clearRegistry();
 
         Map<String, AdvancementHolder> rootMap = new HashMap<>();
         List<AdvancementHolder> childAdvancements = new ArrayList<>();
 
         for (AdvancementHolder holder : allAdvancements) {
             Identifier id = holder.id();
-            if (!id.getNamespace().equalsIgnoreCase(TARGET_NAMESPACE)) {
-                continue;
-            }
+            if (!id.getNamespace().equalsIgnoreCase(TARGET_NAMESPACE)) continue;
 
-            String path = id.getPath(); // ex: "sociedade/root" ou "sociedade/protegido"
+            String path = id.getPath();
             if (path.endsWith("/root")) {
                 String categoryId = path.substring(0, path.indexOf("/root"));
                 rootMap.put(categoryId, holder);
@@ -84,7 +78,7 @@ public class DynamicAdvancementLoader {
             }
 
             String color = getCategoryColor(categoryId);
-            api.registerCategory(new CategoryModel(categoryId, title, color, desc));
+            manager.registerCategory(new CategoryModel(categoryId, title, color, desc));
         }
 
         int registeredCount = 0;
@@ -96,8 +90,8 @@ public class DynamicAdvancementLoader {
             String categoryId = slashIndex != -1 ? path.substring(0, slashIndex) : "geral";
             String advId = slashIndex != -1 ? path.substring(slashIndex + 1) : path;
 
-            if (api.getCategory(categoryId) == null) {
-                api.registerCategory(new CategoryModel(
+            if (manager.getCategory(categoryId) == null) {
+                manager.registerCategory(new CategoryModel(
                         categoryId,
                         categoryId.substring(0, 1).toUpperCase() + categoryId.substring(1),
                         getCategoryColor(categoryId),
@@ -137,13 +131,13 @@ public class DynamicAdvancementLoader {
             NamespacedKey key = new NamespacedKey(TARGET_NAMESPACE, path);
             AdvancementModel model = new AdvancementModel(advId, categoryId, key, title, desc, frame, xpReward, icon);
 
-            api.registerAdvancement(model);
+            manager.registerAdvancement(model);
             registeredCount++;
         }
 
         plugin.getLogger().info(String.format(
                 "Sucesso! %d categorias dinâmicas e %d conquistas carregadas diretamente do datapack.",
-                api.getAllCategories().size(), registeredCount
+                manager.getAllCategories().size(), registeredCount
         ));
     }
 
