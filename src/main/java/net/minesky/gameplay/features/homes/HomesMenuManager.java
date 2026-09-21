@@ -4,10 +4,13 @@ import com.earth2me.essentials.Essentials;
 import com.earth2me.essentials.User;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minesky.gameplay.MineSkyGameplayPlugin;
 import net.william278.huskclaims.api.BukkitHuskClaimsAPI;
-import net.william278.huskclaims.user.OnlineUser;
+import net.william278.huskclaims.api.HuskClaimsAPI;
+import net.william278.huskclaims.claim.Claim;
+import net.william278.huskclaims.claim.ServerWorldClaim;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -22,7 +25,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -72,30 +74,34 @@ public class HomesMenuManager {
         Bukkit.getAsyncScheduler().runNow(plugin, task -> {
             List<SavedLocationEntry> entries = new ArrayList<>();
             loadEssentialsHomes(targetUUID, entries);
-            loadHuskClaims(targetUUID, entries, () -> future.complete(entries));
+            loadHuskClaims(targetUUID, targetName, entries, () -> future.complete(entries));
         });
         return future;
     }
 
+    public Component deserialize(String string) {
+        return mm.deserialize(string).decoration(TextDecoration.ITALIC, false);
+    }
+
     public void sendConsoleList(CommandSender sender, UUID targetUUID, String targetName) {
         fetchPlayerEntries(targetUUID, targetName).thenAccept(entries -> {
-            sender.sendMessage(mm.deserialize("<gradient:#667eea:#764ba2>====================================</gradient>"));
-            sender.sendMessage(mm.deserialize("<gold><b>Locais de:</b></gold> <white>" + targetName + "</white>"));
-            sender.sendMessage(mm.deserialize("<gradient:#667eea:#764ba2>====================================</gradient>"));
+            sender.sendMessage(deserialize("<gradient:#667eea:#764ba2>====================================</gradient>"));
+            sender.sendMessage(deserialize("<gold><b>Locais de:</b></gold> <white>" + targetName + "</white>"));
+            sender.sendMessage(deserialize("<gradient:#667eea:#764ba2>====================================</gradient>"));
 
             int homeIdx = 1;
             int claimIdx = 1;
             for (SavedLocationEntry entry : entries) {
                 if (entry.getType() == SavedLocationEntry.Type.HOME) {
-                    sender.sendMessage(mm.deserialize("<aqua>[" + homeIdx++ + "] Home: " + entry.getName() + "</aqua> <gray>(" + entry.getWorld() + " | X: " + entry.getX() + ", Y: " + entry.getY() + ", Z: " + entry.getZ() + ")</gray>"));
+                    sender.sendMessage(deserialize("<aqua>[" + homeIdx++ + "] Home: " + entry.getName() + "</aqua> <gray>(" + entry.getWorld() + " | X: " + entry.getX() + ", Y: " + entry.getY() + ", Z: " + entry.getZ() + ")</gray>"));
                 } else {
-                    sender.sendMessage(mm.deserialize("<yellow>[" + claimIdx++ + "] " + entry.getName() + "</yellow> <gray>(" + entry.getWorld() + " | X: " + entry.getX() + ", Z: " + entry.getZ() + " | Área: " + entry.getArea() + "m²)</gray>"));
+                    sender.sendMessage(deserialize("<yellow>[" + claimIdx++ + "] " + entry.getName() + "</yellow> <gray>(" + entry.getWorld() + " | X: " + entry.getX() + ", Z: " + entry.getZ() + " | Área: " + entry.getArea() + "m²)</gray>"));
                 }
             }
             if (entries.isEmpty()) {
-                sender.sendMessage(mm.deserialize("<red>Nenhum local ou terreno encontrado para este jogador.</red>"));
+                sender.sendMessage(deserialize("<red>Nenhum local ou terreno encontrado para este jogador.</red>"));
             }
-            sender.sendMessage(mm.deserialize("<gradient:#667eea:#764ba2>====================================</gradient>"));
+            sender.sendMessage(deserialize("<gradient:#667eea:#764ba2>====================================</gradient>"));
         });
     }
 
@@ -110,7 +116,7 @@ public class HomesMenuManager {
         Location startLoc = player.getLocation().clone();
         AtomicInteger remainingSeconds = new AtomicInteger(5);
 
-        player.sendMessage(mm.deserialize("<gradient:#ff9900:#ff5500><b>[Teleporte]</b></gradient> <gray>Teleportando para <white>" + destinationName + "</white> em <gold>5 segundos</gold>. Não se mova!</gray>"));
+        player.sendMessage(deserialize("<gradient:#ff9900:#ff5500><b>[Teleporte]</b></gradient> <gray>Teleportando para <white>" + destinationName + "</white> em <gold>5 segundos</gold>. Não se mova!</gray>"));
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.0f);
 
         ScheduledTask scheduledTask = player.getScheduler().runAtFixedRate(plugin, task -> {
@@ -123,14 +129,14 @@ public class HomesMenuManager {
             if (player.getLocation().distanceSquared(startLoc) > 0.25) {
                 task.cancel();
                 pendingTeleports.remove(player.getUniqueId());
-                player.sendMessage(mm.deserialize("<red><b>[Teleporte]</b> Teleporte cancelado! Você se moveu.</red>"));
+                player.sendMessage(deserialize("<red><b>[Teleporte]</b> Teleporte cancelado! Você se moveu.</red>"));
                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
                 return;
             }
 
             int current = remainingSeconds.decrementAndGet();
             if (current > 0) {
-                player.sendMessage(mm.deserialize("<gradient:#ff9900:#ff5500><b>[Teleporte]</b></gradient> <gray>Teleportando em <gold>" + current + "s</gold>...</gray>"));
+                player.sendMessage(deserialize("<gradient:#ff9900:#ff5500><b>[Teleporte]</b></gradient> <gray>Teleportando em <gold>" + current + "s</gold>...</gray>"));
                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 0.8f, 1.2f);
             } else {
                 task.cancel();
@@ -153,9 +159,9 @@ public class HomesMenuManager {
         player.teleportAsync(targetLoc).thenAccept(success -> {
             if (success) {
                 player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
-                player.sendMessage(mm.deserialize("<gradient:#43e97b:#38f9d7>Teleportado com sucesso para <white>" + destinationName + "</white>!</gradient>"));
+                player.sendMessage(deserialize("<gradient:#43e97b:#38f9d7>Teleportado com sucesso para <white>" + destinationName + "</white>!</gradient>"));
             } else {
-                player.sendMessage(mm.deserialize("<red>Falha ao teleportar para este local!</red>"));
+                player.sendMessage(deserialize("<red>Falha ao teleportar para este local!</red>"));
             }
         });
     }
@@ -194,7 +200,7 @@ public class HomesMenuManager {
         }
     }
 
-    private void loadHuskClaims(UUID uuid, List<SavedLocationEntry> entries, Runnable callback) {
+    private void loadHuskClaims(UUID uuid, String targetName, List<SavedLocationEntry> entries, Runnable callback) {
         if (!Bukkit.getPluginManager().isPluginEnabled("HuskClaims")) {
             callback.run();
             return;
@@ -202,88 +208,55 @@ public class HomesMenuManager {
 
         try {
             BukkitHuskClaimsAPI api = BukkitHuskClaimsAPI.getInstance();
-            Player online = Bukkit.getPlayer(uuid);
-            CompletableFuture<?> claimsFuture;
+            String safeName = (targetName != null && !targetName.isBlank()) ? targetName : "Player";
+            net.william278.huskclaims.user.User user = net.william278.huskclaims.user.User.of(uuid, safeName);
 
-            if (online != null) {
-                OnlineUser user = api.getOnlineUser(online);
-                claimsFuture = api.getGlobalUserClaims(user);
-            } else {
-                claimsFuture = api.getUser(uuid).thenCompose(opt -> {
-                    if (opt.isPresent()) {
-                        Object userObj = opt.get();
-                        if (userObj instanceof net.william278.huskclaims.user.User u) {
-                            return api.getGlobalUserClaims(u);
-                        }
-                        try {
-                            Method getUserMethod = userObj.getClass().getMethod("getUser");
-                            Object innerUser = getUserMethod.invoke(userObj);
-                            if (innerUser instanceof net.william278.huskclaims.user.User u) {
-                                return api.getGlobalUserClaims(u);
-                            }
-                        } catch (Exception ignored) {
-                        }
-                        try {
-                            Method userMethod = userObj.getClass().getMethod("user");
-                            Object innerUser = userMethod.invoke(userObj);
-                            if (innerUser instanceof net.william278.huskclaims.user.User u) {
-                                return api.getGlobalUserClaims(u);
-                            }
-                        } catch (Exception ignored) {
-                        }
+            Map<net.william278.huskclaims.claim.ClaimWorld, List<Claim>> localClaims = api.getUserClaims(user);
+            if (localClaims != null && !localClaims.isEmpty()) {
+                int count = 1;
+                for (Map.Entry<net.william278.huskclaims.claim.ClaimWorld, List<Claim>> entry : localClaims.entrySet()) {
+                    String worldName = entry.getKey().getName(BukkitHuskClaimsAPI.getInstance().getPlugin());
+                    for (Claim claim : entry.getValue()) {
+                        var center = claim.getRegion().getCenter();
+                        int cx = (int) center.getBlockX();
+                        int cz = (int) center.getBlockZ();
+                        int area = (int) claim.getRegion().getSurfaceArea();
+
+                        entries.add(new SavedLocationEntry(
+                                SavedLocationEntry.Type.CLAIM,
+                                "terreno" + count++,
+                                worldName,
+                                cx,
+                                64,
+                                cz,
+                                area
+                        ));
                     }
-                    return CompletableFuture.completedFuture(List.of());
-                });
+                }
+                callback.run();
+                return;
             }
 
-            claimsFuture.thenAccept(claimsObj -> {
-                if (claimsObj instanceof Iterable<?> iterable) {
-                    int index = 1;
-                    for (Object claimObj : iterable) {
-                        try {
-                            String worldName = "world";
-                            int cx = 0;
-                            int cz = 0;
-                            int area = 0;
+            api.getGlobalUserClaims(user).thenAccept(claims -> {
+                if (claims != null) {
+                    int count = 1;
+                    for (ServerWorldClaim swc : claims) {
+                        Claim claim = swc.claim();
+                        String worldName = swc.serverWorld().world().getName();
+                        var center = claim.getRegion().getCenter();
+                        int cx = (int) center.getBlockX();
+                        int cz = (int) center.getBlockZ();
+                        int area = (int) claim.getRegion().getSurfaceArea();
 
-                            Object targetClaim = claimObj;
-                            if (claimObj.getClass().getSimpleName().contains("SavedClaim")) {
-                                try {
-                                    Object worldObj = claimObj.getClass().getMethod("world").invoke(claimObj);
-                                    worldName = (String) worldObj.getClass().getMethod("getName").invoke(worldObj);
-                                } catch (Exception e1) {
-                                    Object worldObj = claimObj.getClass().getMethod("getWorld").invoke(claimObj);
-                                    worldName = (String) worldObj.getClass().getMethod("getName").invoke(worldObj);
-                                }
-
-                                try {
-                                    targetClaim = claimObj.getClass().getMethod("claim").invoke(claimObj);
-                                } catch (Exception e2) {
-                                    targetClaim = claimObj.getClass().getMethod("getClaim").invoke(claimObj);
-                                }
-                            }
-
-                            Object region = targetClaim.getClass().getMethod("getRegion").invoke(targetClaim);
-                            Object center = region.getClass().getMethod("getCenter").invoke(region);
-                            cx = ((Number) center.getClass().getMethod("getX").invoke(center)).intValue();
-                            cz = ((Number) center.getClass().getMethod("getZ").invoke(center)).intValue();
-
-                            try {
-                                area = ((Number) region.getClass().getMethod("getSurfaceArea").invoke(region)).intValue();
-                            } catch (Exception ignored) {
-                            }
-
-                            entries.add(new SavedLocationEntry(
-                                    SavedLocationEntry.Type.CLAIM,
-                                    "terreno" + index++,
-                                    worldName,
-                                    cx,
-                                    64,
-                                    cz,
-                                    area
-                            ));
-                        } catch (Exception ignored) {
-                        }
+                        entries.add(new SavedLocationEntry(
+                                SavedLocationEntry.Type.CLAIM,
+                                "terreno" + count++,
+                                worldName,
+                                cx,
+                                64,
+                                cz,
+                                area
+                        ));
                     }
                 }
                 callback.run();
@@ -301,8 +274,8 @@ public class HomesMenuManager {
         boolean isOwn = player.getUniqueId().equals(targetUUID);
 
         Component title = isOwn
-                ? mm.deserialize("<gradient:#667eea:#764ba2><b>Locais Salvos</b></gradient> <dark_gray>»</dark_gray> <gray>Pág. " + (page + 1))
-                : mm.deserialize("<gradient:#667eea:#764ba2><b>Locais de " + targetName + "</b></gradient> <dark_gray>»</dark_gray> <gray>Pág. " + (page + 1));
+                ? deserialize("<gradient:#667eea:#764ba2><b>Locais Salvos</b></gradient> <dark_gray>»</dark_gray> <gray>Pág. " + (page + 1))
+                : deserialize("<gradient:#667eea:#764ba2><b>Locais de " + targetName + "</b></gradient> <dark_gray>»</dark_gray> <gray>Pág. " + (page + 1));
 
         Inventory inv = Bukkit.createInventory(holder, 54, title);
         holder.setInventory(inv);
@@ -334,8 +307,8 @@ public class HomesMenuManager {
         if (page > 0) {
             ItemStack prev = new ItemStack(Material.ARROW);
             ItemMeta meta = prev.getItemMeta();
-            meta.displayName(mm.deserialize("<gradient:#ff416c:#ff4b2b><b>◀ Página Anterior</b></gradient>"));
-            meta.lore(List.of(mm.deserialize("<gray>Ir para a página <white>" + page + "</white>.</gray>")));
+            meta.displayName(deserialize("<gradient:#ff416c:#ff4b2b><b>◀ Página Anterior</b></gradient>"));
+            meta.lore(List.of(deserialize("<gray>Ir para a página <white>" + page + "</white>.</gray>")));
             prev.setItemMeta(meta);
             inv.setItem(45, prev);
         } else {
@@ -344,17 +317,17 @@ public class HomesMenuManager {
 
         ItemStack searchItem = new ItemStack(Material.SPYGLASS);
         ItemMeta searchMeta = searchItem.getItemMeta();
-        searchMeta.displayName(mm.deserialize("<gradient:#00c6ff:#0072ff><b>Buscar & Filtrar</b></gradient>"));
+        searchMeta.displayName(deserialize("<gradient:#00c6ff:#0072ff><b>Buscar & Filtrar</b></gradient>"));
         List<Component> searchLore = new ArrayList<>();
         if (filter != null && !filter.isBlank()) {
-            searchLore.add(mm.deserialize("<gray>Filtro ativo: <aqua>\"" + filter + "\"</aqua></gray>"));
+            searchLore.add(deserialize("<gray>Filtro ativo: <aqua>\"" + filter + "\"</aqua></gray>"));
             searchLore.add(Component.empty());
-            searchLore.add(mm.deserialize("<yellow>▶ Botão Esquerdo: <white>Alterar filtro</white></yellow>"));
-            searchLore.add(mm.deserialize("<red>▶ Botão Direito: <white>Remover filtro</white></red>"));
+            searchLore.add(deserialize("<yellow>▶ Botão Esquerdo: <white>Alterar filtro</white></yellow>"));
+            searchLore.add(deserialize("<red>▶ Botão Direito: <white>Remover filtro</white></red>"));
         } else {
-            searchLore.add(mm.deserialize("<gray>Nenhum filtro aplicado.</gray>"));
+            searchLore.add(deserialize("<gray>Nenhum filtro aplicado.</gray>"));
             searchLore.add(Component.empty());
-            searchLore.add(mm.deserialize("<yellow>▶ Clique para filtrar por nome</yellow>"));
+            searchLore.add(deserialize("<yellow>▶ Clique para filtrar por nome</yellow>"));
         }
         searchMeta.lore(searchLore);
         searchItem.setItemMeta(searchMeta);
@@ -362,7 +335,7 @@ public class HomesMenuManager {
 
         ItemStack infoItem = new ItemStack(Material.COMPASS);
         ItemMeta infoMeta = infoItem.getItemMeta();
-        infoMeta.displayName(mm.deserialize("<gradient:#f7971e:#ffd200><b>Informações</b></gradient>"));
+        infoMeta.displayName(deserialize("<gradient:#f7971e:#ffd200><b>Informações</b></gradient>"));
         int homesCount = 0;
         int claimsCount = 0;
         for (SavedLocationEntry entry : allEntries) {
@@ -373,9 +346,9 @@ public class HomesMenuManager {
             }
         }
         infoMeta.lore(List.of(
-                mm.deserialize("<gray>Homes: <gradient:#43e97b:#38f9d7><b>" + homesCount + "</b></gradient></gray>"),
-                mm.deserialize("<gray>Terrenos: <gradient:#f6d365:#fda085><b>" + claimsCount + "</b></gradient></gray>"),
-                mm.deserialize("<gray>Páginas: <white>" + (page + 1) + " / " + totalPages + "</white></gray>")
+                deserialize("<gray>Homes: <gradient:#43e97b:#38f9d7><b>" + homesCount + "</b></gradient></gray>"),
+                deserialize("<gray>Terrenos: <gradient:#f6d365:#fda085><b>" + claimsCount + "</b></gradient></gray>"),
+                deserialize("<gray>Páginas: <white>" + (page + 1) + " / " + totalPages + "</white></gray>")
         ));
         infoItem.setItemMeta(infoMeta);
         inv.setItem(49, infoItem);
@@ -383,12 +356,12 @@ public class HomesMenuManager {
         if (isOwn) {
             ItemStack createItem = new ItemStack(Material.BEACON);
             ItemMeta createMeta = createItem.getItemMeta();
-            createMeta.displayName(mm.deserialize("<gradient:#11998e:#38ef7d><b>+ Nova Home</b></gradient>"));
+            createMeta.displayName(deserialize("<gradient:#11998e:#38ef7d><b>+ Nova Home</b></gradient>"));
             createMeta.lore(List.of(
-                    mm.deserialize("<gray>Salve sua posição atual rapidamente.</gray>"),
+                    deserialize("<gray>Salve sua posição atual rapidamente.</gray>"),
                     Component.empty(),
-                    mm.deserialize("<white>Você pode usar <yellow>/sethome <nome></yellow></white>"),
-                    mm.deserialize("<green>▶ Clique para definir pelo chat</green>")
+                    deserialize("<white>Você pode usar <yellow>/sethome <nome></yellow></white>"),
+                    deserialize("<green>▶ Clique para definir pelo chat</green>")
             ));
             createItem.setItemMeta(createMeta);
             inv.setItem(51, createItem);
@@ -399,8 +372,8 @@ public class HomesMenuManager {
         if (page < totalPages - 1) {
             ItemStack next = new ItemStack(Material.ARROW);
             ItemMeta meta = next.getItemMeta();
-            meta.displayName(mm.deserialize("<gradient:#ff416c:#ff4b2b><b>Próxima Página ▶</b></gradient>"));
-            meta.lore(List.of(mm.deserialize("<gray>Ir para a página <white>" + (page + 2) + "</white>.</gray>")));
+            meta.displayName(deserialize("<gradient:#ff416c:#ff4b2b><b>Próxima Página ▶</b></gradient>"));
+            meta.lore(List.of(deserialize("<gray>Ir para a página <white>" + (page + 2) + "</white>.</gray>")));
             next.setItemMeta(meta);
             inv.setItem(53, next);
         } else {
@@ -415,14 +388,14 @@ public class HomesMenuManager {
             ItemStack item = new ItemStack(Material.PAPER);
             ItemMeta meta = item.getItemMeta();
             meta.setCustomModelData(22);
-            meta.displayName(mm.deserialize("<gradient:#4facfe:#00f2fe><b>✦ " + entry.getName() + "</b></gradient>"));
+            meta.displayName(deserialize("<gradient:#4facfe:#00f2fe><b>✦ " + entry.getName() + "</b></gradient>"));
             meta.lore(List.of(
-                    mm.deserialize("<dark_gray>Ponto de Retorno (Home)</dark_gray>"),
+                    deserialize("<dark_gray>Ponto de Retorno (Home)</dark_gray>"),
                     Component.empty(),
-                    mm.deserialize("<gray>Mundo: <white>" + entry.getWorld() + "</white></gray>"),
-                    mm.deserialize("<gray>Coordenadas: <gradient:#4facfe:#00f2fe>X: " + entry.getX() + " | Y: " + entry.getY() + " | Z: " + entry.getZ() + "</gradient></gray>"),
+                    deserialize("<gray>Mundo: <white>" + getWorldName(entry.getWorld()) + "</white></gray>"),
+                    deserialize("<gray>Coordenadas: <gradient:#4facfe:#00f2fe>X: " + entry.getX() + " | Y: " + entry.getY() + " | Z: " + entry.getZ() + "</gradient></gray>"),
                     Component.empty(),
-                    mm.deserialize("<yellow>▶ Clique para iniciar teleporte</yellow>")
+                    deserialize("<yellow>▶ Clique para iniciar teleporte</yellow>")
             ));
             item.setItemMeta(meta);
             return item;
@@ -430,19 +403,28 @@ public class HomesMenuManager {
             ItemStack item = new ItemStack(Material.GOLDEN_SHOVEL);
             ItemMeta meta = item.getItemMeta();
             meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-            meta.displayName(mm.deserialize("<gradient:#f6d365:#fda085><b>✦ " + entry.getName() + "</b></gradient>"));
+            meta.displayName(deserialize("<gradient:#f6d365:#fda085><b>✦ " + entry.getName() + "</b></gradient>"));
             meta.lore(List.of(
-                    mm.deserialize("<dark_gray>Área Protegida (HuskClaims)</dark_gray>"),
+                    deserialize("<dark_gray>Área Protegida (Terreno)</dark_gray>"),
                     Component.empty(),
-                    mm.deserialize("<gray>Mundo: <white>" + entry.getWorld() + "</white></gray>"),
-                    mm.deserialize("<gray>Centro: <gradient:#f6d365:#fda085>X: " + entry.getX() + " | Z: " + entry.getZ() + "</gradient></gray>"),
-                    mm.deserialize("<gray>Área de Bloco: <white>" + entry.getArea() + " blocos²</white></gray>"),
+                    deserialize("<gray>Mundo: <white>" + getWorldName(entry.getWorld()) + "</white></gray>"),
+                    deserialize("<gray>Centro: <gradient:#f6d365:#fda085>X: " + entry.getX() + " | Z: " + entry.getZ() + "</gradient></gray>"),
+                    deserialize("<gray>Área de Bloco: <white>" + entry.getArea() + " blocos²</white></gray>"),
                     Component.empty(),
-                    mm.deserialize("<yellow>▶ Clique para ir ao ponto seguro!</yellow>")
+                    deserialize("<yellow>▶ Clique para ir ao ponto seguro!</yellow>")
             ));
             item.setItemMeta(meta);
             return item;
         }
+    }
+
+    public static String getWorldName(String worldId) {
+        return switch (worldId) {
+            case "minesky_overworld" -> "Overworld";
+            case "minesky_nether" -> "<red>Nether</red>";
+            case "minesky_the_end" -> "<light_purple>The End</light_purple>";
+            default -> worldId;
+        };
     }
 
     public static class HomesMenuHolder implements InventoryHolder {

@@ -108,14 +108,16 @@ public class HomesListener implements Listener {
                 return;
             }
 
-            Location targetLoc;
             if (entry.getType() == SavedLocationEntry.Type.CLAIM) {
-                targetLoc = SafeLocationUtil.findSafeLocation(world, entry.getX(), entry.getZ());
+                SafeLocationUtil.findSafeLocation(plugin, world, entry.getX(), entry.getZ()).thenAccept(targetLoc -> {
+                    player.getScheduler().run(plugin, task -> {
+                        menuManager.startTeleport(player, targetLoc, entry.getName());
+                    }, null);
+                });
             } else {
-                targetLoc = new Location(world, entry.getX() + 0.5, entry.getY(), entry.getZ() + 0.5);
+                Location targetLoc = new Location(world, entry.getX() + 0.5, entry.getY(), entry.getZ() + 0.5);
+                menuManager.startTeleport(player, targetLoc, entry.getName());
             }
-
-            menuManager.startTeleport(player, targetLoc, entry.getName());
         }
     }
 

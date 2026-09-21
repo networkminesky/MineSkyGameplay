@@ -1,15 +1,37 @@
 package net.minesky.gameplay.features.homes;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.plugin.Plugin;
+
+import java.util.concurrent.CompletableFuture;
 
 public final class SafeLocationUtil {
 
     private SafeLocationUtil() {}
 
-    public static Location findSafeLocation(World world, int x, int z) {
+    public static CompletableFuture<Location> findSafeLocation(Plugin plugin, World world, int x, int z) {
+        CompletableFuture<Location> future = new CompletableFuture<>();
+        int chunkX = x >> 4;
+        int chunkZ = z >> 4;
+
+        world.getChunkAtAsync(chunkX, chunkZ).thenAccept(chunk -> {
+            Bukkit.getRegionScheduler().execute(plugin, world, chunkX, chunkZ, () -> {
+                Location safeLoc = findSafeLocationSync(world, x, z);
+                future.complete(safeLoc);
+            });
+        }).exceptionally(ex -> {
+            future.complete(new Location(world, x + 0.5, 64, z + 0.5));
+            return null;
+        });
+
+        return future;
+    }
+
+    private static Location findSafeLocationSync(World world, int x, int z) {
         int[] offsets = {0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5};
         for (int dx : offsets) {
             for (int dz : offsets) {

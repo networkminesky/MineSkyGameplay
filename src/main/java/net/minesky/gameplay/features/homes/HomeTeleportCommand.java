@@ -77,14 +77,18 @@ public class HomeTeleportCommand implements CommandExecutor, TabCompleter {
                     return;
                 }
 
-                Location destination;
-                if (finalEntry.getType() == SavedLocationEntry.Type.CLAIM) {
-                    destination = SafeLocationUtil.findSafeLocation(world, finalEntry.getX(), finalEntry.getZ());
-                } else {
-                    destination = new Location(world, finalEntry.getX() + 0.5, finalEntry.getY(), finalEntry.getZ() + 0.5);
-                }
+                String destinationName = resolvedPlayerName.equals(player.getName()) ? finalEntry.getName() : resolvedPlayerName + ":" + finalEntry.getName();
 
-                menuManager.startTeleport(player, destination, resolvedPlayerName.equals(player.getName()) ? finalEntry.getName() : resolvedPlayerName + ":" + finalEntry.getName());
+                if (finalEntry.getType() == SavedLocationEntry.Type.CLAIM) {
+                    SafeLocationUtil.findSafeLocation(menuManager.getPlugin(), world, finalEntry.getX(), finalEntry.getZ()).thenAccept(targetLoc -> {
+                        player.getScheduler().run(menuManager.getPlugin(), schedTask -> {
+                            menuManager.startTeleport(player, targetLoc, destinationName);
+                        }, null);
+                    });
+                } else {
+                    Location destination = new Location(world, finalEntry.getX() + 0.5, finalEntry.getY(), finalEntry.getZ() + 0.5);
+                    menuManager.startTeleport(player, destination, destinationName);
+                }
             }, null);
         });
 
