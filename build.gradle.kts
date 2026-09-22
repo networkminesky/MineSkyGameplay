@@ -24,6 +24,8 @@ dependencies {
 
     compileOnly("org.geysermc.floodgate:api:2.2.3-SNAPSHOT")
 
+    compileOnly("com.github.networkminesky:mineskyguildas:60181761df")
+
     // Essentials
     compileOnly("net.essentialsx:EssentialsX:2.20.1") {
         isTransitive = false

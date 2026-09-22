@@ -7,8 +7,11 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minesky.gameplay.MineSkyGameplayPlugin;
+import net.mineskyguildas.data.Guilds;
+import net.mineskyguildas.enums.GuildRoles;
+import net.mineskyguildas.handlers.GuildHandler;
+import net.mineskyguildas.utils.Utils;
 import net.william278.huskclaims.api.BukkitHuskClaimsAPI;
-import net.william278.huskclaims.api.HuskClaimsAPI;
 import net.william278.huskclaims.claim.Claim;
 import net.william278.huskclaims.claim.ServerWorldClaim;
 import org.bukkit.Bukkit;
@@ -74,9 +77,42 @@ public class HomesMenuManager {
         Bukkit.getAsyncScheduler().runNow(plugin, task -> {
             List<SavedLocationEntry> entries = new ArrayList<>();
             loadEssentialsHomes(targetUUID, entries);
+            loadClanHome(targetUUID, entries);
             loadHuskClaims(targetUUID, targetName, entries, () -> future.complete(entries));
         });
         return future;
+    }
+
+    private void loadClanHome(UUID uuid, List<SavedLocationEntry> entries) {
+        if (!Bukkit.getPluginManager().isPluginEnabled("MineSkyGuildas2")) {
+            return;
+        }
+
+        try {
+            Guilds guild = GuildHandler.getGuildByPlayer(uuid);
+            if (guild == null) {
+                return;
+            }
+
+            GuildRoles role = guild.getRole(uuid);
+            if (role == null || role == GuildRoles.RECRUIT) {
+                return;
+            }
+
+            Location base = guild.getBase();
+            if (base != null && base.getWorld() != null) {
+                entries.add(new SavedLocationEntry(
+                        SavedLocationEntry.Type.CLAN,
+                        "Base do Clã [" + Utils.getTag(guild.getTag()) + "]",
+                        base.getWorld().getName(),
+                        base.getBlockX(),
+                        base.getBlockY(),
+                        base.getBlockZ(),
+                        0
+                ));
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     public Component deserialize(String string) {
@@ -94,6 +130,8 @@ public class HomesMenuManager {
             for (SavedLocationEntry entry : entries) {
                 if (entry.getType() == SavedLocationEntry.Type.HOME) {
                     sender.sendMessage(deserialize("<aqua>[" + homeIdx++ + "] Home: " + entry.getName() + "</aqua> <gray>(" + entry.getWorld() + " | X: " + entry.getX() + ", Y: " + entry.getY() + ", Z: " + entry.getZ() + ")</gray>"));
+                } else if (entry.getType() == SavedLocationEntry.Type.CLAN) {
+                    sender.sendMessage(deserialize("<red>[Clã] " + entry.getName() + "</red> <gray>(" + entry.getWorld() + " | X: " + entry.getX() + ", Y: " + entry.getY() + ", Z: " + entry.getZ() + ")</gray>"));
                 } else {
                     sender.sendMessage(deserialize("<yellow>[" + claimIdx++ + "] " + entry.getName() + "</yellow> <gray>(" + entry.getWorld() + " | X: " + entry.getX() + ", Z: " + entry.getZ() + " | Área: " + entry.getArea() + "m²)</gray>"));
                 }
@@ -340,7 +378,7 @@ public class HomesMenuManager {
         for (SavedLocationEntry entry : allEntries) {
             if (entry.getType() == SavedLocationEntry.Type.HOME) {
                 homesCount++;
-            } else {
+            } else if (entry.getType() == SavedLocationEntry.Type.CLAIM) {
                 claimsCount++;
             }
         }
@@ -395,6 +433,22 @@ public class HomesMenuManager {
                     deserialize("<gray>Mundo: <white>" + getWorldName(entry.getWorld()) + "</white></gray>"),
                     deserialize("<gray>Coordenadas: <gradient:#4facfe:#00f2fe>X: " + entry.getX() + " | Y: " + entry.getY() + " | Z: " + entry.getZ() + "</gradient></gray>"),
                     Component.empty(),
+                    deserialize("<yellow>▶ Clique para iniciar teleporte</yellow>")
+            ));
+            item.setItemMeta(meta);
+            return item;
+        } else if (entry.getType() == SavedLocationEntry.Type.CLAN) {
+            ItemStack item = new ItemStack(Material.SHIELD);
+            ItemMeta meta = item.getItemMeta();
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+            meta.displayName(deserialize("<gradient:#ff416c:#8a2387><b>✦ " + entry.getName() + "</b></gradient>"));
+            meta.lore(List.of(
+                    deserialize("<dark_gray>Base de Operações do Clã</dark_gray>"),
+                    Component.empty(),
+                    deserialize("<gray>Mundo: <white>" + getWorldName(entry.getWorld()) + "</white></gray>"),
+                    deserialize("<gray>Coordenadas: <gradient:#ff416c:#8a2387>X: " + entry.getX() + " | Y: " + entry.getY() + " | Z: " + entry.getZ() + "</gradient></gray>"),
+                    Component.empty(),
+                    deserialize("<white>Atalhos: <yellow>/home cla</yellow>, <yellow>/home base</yellow></white>"),
                     deserialize("<yellow>▶ Clique para iniciar teleporte</yellow>")
             ));
             item.setItemMeta(meta);

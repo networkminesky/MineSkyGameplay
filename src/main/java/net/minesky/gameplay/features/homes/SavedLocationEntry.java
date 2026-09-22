@@ -4,7 +4,8 @@ public class SavedLocationEntry {
 
     public enum Type {
         HOME,
-        CLAIM
+        CLAIM,
+        CLAN
     }
 
     private final Type type;

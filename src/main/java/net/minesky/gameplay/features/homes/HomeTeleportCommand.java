@@ -25,6 +25,11 @@ public class HomeTeleportCommand implements CommandExecutor, TabCompleter {
         this.menuManager = menuManager;
     }
 
+    private boolean isClanAlias(String name) {
+        String lower = name.toLowerCase();
+        return lower.equals("cla") || lower.equals("base");
+    }
+
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (!(sender instanceof Player player)) {
@@ -57,7 +62,12 @@ public class HomeTeleportCommand implements CommandExecutor, TabCompleter {
 
         menuManager.fetchPlayerEntries(targetOwner.getUniqueId(), targetPlayerName).thenAccept(entries -> {
             SavedLocationEntry match = null;
+
             for (SavedLocationEntry entry : entries) {
+                if (entry.getType() == SavedLocationEntry.Type.CLAN && isClanAlias(resolvedName)) {
+                    match = entry;
+                    break;
+                }
                 if (entry.getName().equalsIgnoreCase(resolvedName)) {
                     match = entry;
                     break;
@@ -65,7 +75,7 @@ public class HomeTeleportCommand implements CommandExecutor, TabCompleter {
             }
 
             if (match == null) {
-                player.sendMessage(mm.deserialize("<red>Local ou terreno '" + resolvedName + "' não foi encontrado!</red>"));
+                player.sendMessage(mm.deserialize("<red>Local ou base '" + resolvedName + "' não foi encontrado!</red>"));
                 return;
             }
 
@@ -125,9 +135,21 @@ public class HomeTeleportCommand implements CommandExecutor, TabCompleter {
 
             try {
                 List<SavedLocationEntry> entries = menuManager.fetchPlayerEntries(player.getUniqueId(), player.getName()).join();
+                boolean hasClan = false;
                 for (SavedLocationEntry entry : entries) {
+                    if (entry.getType() == SavedLocationEntry.Type.CLAN) {
+                        hasClan = true;
+                    }
                     if (entry.getName().toLowerCase().startsWith(input.toLowerCase())) {
                         list.add(entry.getName());
+                    }
+                }
+
+                if (hasClan) {
+                    for (String aliasClan : List.of("cla", "base")) {
+                        if (aliasClan.startsWith(input.toLowerCase()) && !list.contains(aliasClan)) {
+                            list.add(aliasClan);
+                        }
                     }
                 }
             } catch (Exception ignored) {
