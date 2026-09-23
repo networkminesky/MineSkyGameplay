@@ -1,21 +1,29 @@
 package net.minesky.gameplay;
 
 import io.papermc.paper.event.server.ServerResourcesReloadedEvent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.minesky.gameplay.core.advancements.AdvancementsManager;
 import net.minesky.gameplay.core.advancements.DynamicAdvancementLoader;
 import net.minesky.gameplay.core.advancements.command.ConquistasCommand;
 import net.minesky.gameplay.core.advancements.hook.MythicHook;
+import net.minesky.gameplay.core.dialogapi.DialogManager;
 import net.minesky.gameplay.core.locator.LocatorManager;
+import net.minesky.gameplay.features.commands.GameplayCommand;
 import net.minesky.gameplay.features.events.ChatListener;
 import net.minesky.gameplay.features.events.PlayerLifecycleListener;
 import net.minesky.gameplay.features.homes.HomeTeleportCommand;
 import net.minesky.gameplay.features.homes.HomesCommand;
 import net.minesky.gameplay.features.homes.HomesListener;
 import net.minesky.gameplay.features.homes.HomesMenuManager;
+import org.bukkit.ServerLinks;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.net.URI;
 
 public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener {
 
@@ -23,6 +31,7 @@ public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener 
     private AdvancementsManager advancementsManager;
     private DynamicAdvancementLoader advancementLoader;
     private HomesMenuManager homesMenuManager;
+    private DialogManager dialogManager;
 
     @Override
     public void onEnable() {
@@ -39,6 +48,10 @@ public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener 
         this.advancementsManager = new AdvancementsManager(this);
         this.advancementsManager.start();
 
+        getLogger().info("[DialogAPI] Inicializando DialogAPI Cross-Platform (Java + Bedrock)...");
+        this.dialogManager = new DialogManager(this);
+        this.dialogManager.start();
+
         this.advancementLoader = new DynamicAdvancementLoader(this, advancementsManager);
         this.advancementLoader.loadFromDatapack();
 
@@ -48,6 +61,9 @@ public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener 
 
         if (getCommand("conquistas") != null) {
             getCommand("conquistas").setExecutor(new ConquistasCommand());
+        }
+        if (getCommand("mineskygameplay") != null) {
+            getCommand("mineskygameplay").setExecutor(new GameplayCommand());
         }
 
         registerCommand("homes", homesCmd, homesCmd);
@@ -63,6 +79,25 @@ public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener 
         getServer().getPluginManager().registerEvents(this, this);
 
         getLogger().info("MineSkyGameplay inicializado com sucesso no Folia!");
+
+        for (ServerLinks.ServerLink link : getServer().getServerLinks().getLinks()) {
+            getServer().getServerLinks().removeLink(link);
+        }
+
+        getServer().getServerLinks().addLink(
+                Component.text("⏿ Site Oficial").color(TextColor.fromHexString("#03e7fc")),
+                URI.create("https://minesky.com.br")
+        );
+        getServer().getServerLinks().addLink(
+                Component.text("\uF804").color(NamedTextColor.WHITE)
+                        .append(Component.text(" Loja MineSky").color(NamedTextColor.GOLD)),
+                URI.create("https://minesky.com.br/loja")
+        );
+        getServer().getServerLinks().addLink(
+                Component.text("༂").color(NamedTextColor.WHITE)
+                        .append(Component.text(" Discord MineSky").color(TextColor.fromHexString("#7e87ef"))),
+                URI.create("https://minesky.com.br/discord")
+        );
     }
 
     private void registerCommand(String name, org.bukkit.command.CommandExecutor executor, org.bukkit.command.TabCompleter completer) {
@@ -75,6 +110,11 @@ public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener 
 
     @Override
     public void onDisable() {
+        if (this.dialogManager != null) {
+            this.dialogManager.stop();
+            this.dialogManager = null;
+        }
+
         if (this.locatorManager != null) {
             this.locatorManager.stop();
             this.locatorManager = null;
@@ -84,7 +124,6 @@ public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener 
             this.advancementsManager.stop();
             this.advancementsManager = null;
         }
-
         this.homesMenuManager = null;
 
         getServer().getAsyncScheduler().cancelTasks(this);
@@ -102,14 +141,16 @@ public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener 
         }
     }
 
+    // API managers
+    public DialogManager getDialogManager() { return dialogManager; }
     public LocatorManager getLocatorManager() {
         return locatorManager;
     }
-
     public AdvancementsManager getAdvancementsManager() {
         return advancementsManager;
     }
 
+    // Plugin managers
     public HomesMenuManager getHomesMenuManager() {
         return homesMenuManager;
     }
