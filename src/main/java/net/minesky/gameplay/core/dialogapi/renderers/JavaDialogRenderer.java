@@ -82,7 +82,6 @@ public final class JavaDialogRenderer {
             DialogAction action = DialogAction.customClick((view, audience) -> {
                 if (!(audience instanceof Player p)) return;
                 JavaDialogResponse response = new JavaDialogResponse(p, view);
-                // Execução segura na thread do jogador no Folia:
                 p.getScheduler().run(plugin, task -> {
                     if (dialog.getSubmitAction() != null) {
                         dialog.getSubmitAction().accept(p, response);

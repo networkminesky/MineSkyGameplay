@@ -91,14 +91,10 @@ public class GameplayCommand implements CommandExecutor {
             if(input.equals("test4")) {
                 MineSkyDialog.builder("<gold>Criação de Clã")
                         .body("<gray>Insira os dados do clã que deseja fundar:")
-                        // Campo de texto
                         .textInput("tag", "Tag do Clã (3-4 letras)", "Ex: SKY", "SKY")
                         .textInput("nome", "Nome do Clã", "Ex: MineSky Warriors", "")
-                        // Booleano / Toggle
                         .boolInput("recrutar", "Recrutamento Aberto", true)
-                        // Slider numérico
                         .sliderInput("taxa", "Taxa Diária (Coins)", 10.0f, 1000.0f, 10.0f, 50.0f)
-                        // Dropdown / Opções
                         .dropdownInput("foco", "Foco do Clã", b -> b
                                 .option("pvp", "§cCombate / PvP")
                                 .option("farm", "§aEconomia / Farm")
@@ -115,7 +111,6 @@ public class GameplayCommand implements CommandExecutor {
                             player.sendMessage("§aClã criado: §e[" + tag + "] " + nome);
                             player.sendMessage("§7Taxa: §f" + taxa + " | Foco: §f" + foco + " | Aberto: §f" + recrutar);
 
-                            // Abrindo outro Diálogo de Boas-Vindas imediatamente (100% thread-safe no Folia):
                             MineSkyDialog.builder("<green>Sucesso!")
                                     .body("<white>Parabéns, seu clã <gold>" + nome + " <white>foi fundado!")
                                     .button("§aIr para a Base", b -> b.sendMessage("§7Teleportando..."))

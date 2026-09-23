@@ -25,7 +25,6 @@ repositories {
     maven("https://jitpack.io")
 }
 
-// Task 100% compatível com o Configuration Cache do Gradle 9
 abstract class StripJarTask : DefaultTask() {
 
     @get:InputFiles
@@ -53,7 +52,6 @@ abstract class StripJarTask : DefaultTask() {
             ZipOutputStream(dest.outputStream().buffered()).use { zipOut ->
                 for (entry in zipIn.entries()) {
                     val name = entry.name
-                    // Se pertencer ao adventure ou bukkit antigos, pula a cópia
                     if (excludes.any { name.startsWith(it) } || !seenEntries.add(name)) {
                         continue
                     }
@@ -72,10 +70,8 @@ abstract class StripJarTask : DefaultTask() {
     }
 }
 
-// 1. Configuração que baixa o HuskClaims bruto
 val huskClaimsRaw by configurations.creating
 
-// 2. Registro da task sem closures externas
 val stripHuskClaims by tasks.registering(StripJarTask::class) {
     inputJar.from(huskClaimsRaw)
     outputJar.set(layout.buildDirectory.file("clean-libs/huskclaims-clean.jar"))
@@ -105,12 +101,10 @@ dependencies {
         isTransitive = false
     }
 
-    // 3. Pede o HuskClaims na configuração isolada
     huskClaimsRaw("com.github.networkminesky.mineskyclaims:huskclaims-bukkit:1.5.13-RELEASE") {
         isTransitive = false
     }
 
-    // 4. Passa a saída do JAR higienizado para a compilação
     compileOnly(files(stripHuskClaims.flatMap { it.outputJar }))
 }
 
