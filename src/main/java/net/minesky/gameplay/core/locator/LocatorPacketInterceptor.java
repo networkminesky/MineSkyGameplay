@@ -33,8 +33,15 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
     public static void inject(Player player, LocatorManager manager) {
         try {
             Channel channel = getChannel(player);
-            if (channel != null && channel.pipeline().get(HANDLER_NAME) == null) {
-                channel.pipeline().addBefore("packet_handler", HANDLER_NAME, new LocatorPacketInterceptor(player.getUniqueId(), manager));
+            if (channel != null) {
+                if (channel.pipeline().get(HANDLER_NAME) != null) {
+                    channel.pipeline().remove(HANDLER_NAME);
+                }
+                if (channel.pipeline().get("packet_handler") != null) {
+                    channel.pipeline().addBefore("packet_handler", HANDLER_NAME, new LocatorPacketInterceptor(player.getUniqueId(), manager));
+                } else {
+                    channel.pipeline().addLast(HANDLER_NAME, new LocatorPacketInterceptor(player.getUniqueId(), manager));
+                }
             }
         } catch (Throwable t) {
             if (manager.isDebug()) {
@@ -65,7 +72,6 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
             }
         } catch (Throwable ignored) {}
 
-        // Fallback de reflexão caso o acessor de rede mude no Paperweight
         try {
             Object handle = player.getClass().getMethod("getHandle").invoke(player);
             for (Field f : handle.getClass().getFields()) {
@@ -92,7 +98,6 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
         if (msg instanceof ClientboundTrackedWaypointPacket packet) {
             try {
                 if (!processWaypointPacket(ctx, packet, promise)) {
-                    // Descarta o pacote silenciosamente para o cliente
                     promise.setSuccess();
                     return;
                 }
@@ -100,13 +105,14 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
                 if (manager.isDebug()) {
                     t.printStackTrace();
                 }
+                promise.setSuccess();
+                return;
             }
         }
         super.write(ctx, msg, promise);
     }
 
     private boolean processWaypointPacket(ChannelHandlerContext ctx, ClientboundTrackedWaypointPacket packet, ChannelPromise promise) {
-        // 1. UNTRACK é sempre permitido para que o cliente limpe waypoints removidos
         if (WaypointPacketHelper.isUntrack(packet)) {
             UUID targetId = extractTargetUuid(packet);
             if (targetId != null) {
@@ -117,7 +123,6 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
 
         UUID targetId = extractTargetUuid(packet);
         if (targetId == null) {
-            // Waypoint sem UUID (ex: waypoint estático por String), mantém fluxo normal
             return true;
         }
 
@@ -128,23 +133,23 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
 
         boolean canSee = manager.canSee(viewerUuid, targetId, viewer.getWorld());
         if (!canSee) {
-            return false; // Bloqueia a exibição na locator bar
+            return false;
         }
 
-        // Se o cliente ainda não recebeu o TRACK deste alvo e o servidor tentou mandar UPDATE,
-        // reescrevemos para TRACK para evitar erro interno de protocolo no cliente
         if (!manager.hasTracked(viewerUuid, targetId)) {
-            manager.markTracked(viewerUuid, targetId);
             if (WaypointPacketHelper.isUpdate(packet)) {
                 TrackedWaypoint tw = WaypointPacketHelper.getWaypoint(packet);
                 if (tw != null) {
                     ClientboundTrackedWaypointPacket trackPacket = WaypointPacketHelper.createTrackPacket(tw);
                     if (trackPacket != null) {
+                        manager.markTracked(viewerUuid, targetId);
                         ctx.write(trackPacket, promise);
                         return false;
                     }
                 }
+                return false;
             }
+            manager.markTracked(viewerUuid, targetId);
         }
 
         return true;
@@ -161,7 +166,6 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
             }
         } catch (Throwable ignored) {}
 
-        // Fallback de reflexão
         try {
             for (Method m : waypoint.getClass().getMethods()) {
                 if (m.getName().equals("id") && m.getParameterCount() == 0) {
@@ -180,10 +184,6 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
         return null;
     }
 
-    /**
-     * Helper de reflexão para contornar o 'private static enum Operation'
-     * da Mojang no ClientboundTrackedWaypointPacket em tempo de compilação.
-     */
     private static final class WaypointPacketHelper {
         private static final Object OP_TRACK;
         private static final Object OP_UNTRACK;
@@ -191,6 +191,7 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
         private static final Field OPERATION_FIELD;
         private static final Field WAYPOINT_FIELD;
         private static final Constructor<ClientboundTrackedWaypointPacket> CONSTRUCTOR;
+        private static final boolean OP_FIRST;
 
         static {
             Class<?> opClass = null;
@@ -200,13 +201,21 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
             Field opField = null;
             Field wpField = null;
             Constructor<ClientboundTrackedWaypointPacket> ctor = null;
+            boolean opFirst = true;
 
             try {
-                // Localiza o enum interno Operation
                 for (Class<?> declared : ClientboundTrackedWaypointPacket.class.getDeclaredClasses()) {
                     if (declared.getSimpleName().equals("Operation")) {
                         opClass = declared;
                         break;
+                    }
+                }
+                if (opClass == null) {
+                    for (Field f : ClientboundTrackedWaypointPacket.class.getDeclaredFields()) {
+                        if (f.getType().isEnum() && f.getType().getName().contains("Operation")) {
+                            opClass = f.getType();
+                            break;
+                        }
                     }
                 }
 
@@ -222,17 +231,23 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
                         }
                     }
 
-                    // Localiza o construtor do Record (Operation, TrackedWaypoint)
                     for (Constructor<?> c : ClientboundTrackedWaypointPacket.class.getDeclaredConstructors()) {
-                        if (c.getParameterCount() == 2 && c.getParameterTypes()[0].equals(opClass)) {
-                            ctor = (Constructor<ClientboundTrackedWaypointPacket>) c;
-                            ctor.setAccessible(true);
-                            break;
+                        if (c.getParameterCount() == 2) {
+                            if (c.getParameterTypes()[0].equals(opClass)) {
+                                ctor = (Constructor<ClientboundTrackedWaypointPacket>) c;
+                                ctor.setAccessible(true);
+                                opFirst = true;
+                                break;
+                            } else if (c.getParameterTypes()[1].equals(opClass)) {
+                                ctor = (Constructor<ClientboundTrackedWaypointPacket>) c;
+                                ctor.setAccessible(true);
+                                opFirst = false;
+                                break;
+                            }
                         }
                     }
                 }
 
-                // Localiza os campos do record
                 for (Field f : ClientboundTrackedWaypointPacket.class.getDeclaredFields()) {
                     if (opClass != null && f.getType().equals(opClass)) {
                         f.setAccessible(true);
@@ -252,6 +267,7 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
             OPERATION_FIELD = opField;
             WAYPOINT_FIELD = wpField;
             CONSTRUCTOR = ctor;
+            OP_FIRST = opFirst;
         }
 
         static boolean isUntrack(ClientboundTrackedWaypointPacket packet) {
@@ -270,12 +286,20 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
         }
 
         static Object getOperation(ClientboundTrackedWaypointPacket packet) {
-            if (packet == null || OPERATION_FIELD == null) return null;
-            try {
-                return OPERATION_FIELD.get(packet);
-            } catch (Throwable ignored) {
-                return null;
+            if (packet == null) return null;
+            if (OPERATION_FIELD != null) {
+                try {
+                    return OPERATION_FIELD.get(packet);
+                } catch (Throwable ignored) {}
             }
+            try {
+                for (Method m : packet.getClass().getMethods()) {
+                    if (m.getParameterCount() == 0 && m.getReturnType().isEnum() && m.getReturnType().getSimpleName().contains("Operation")) {
+                        return m.invoke(packet);
+                    }
+                }
+            } catch (Throwable ignored) {}
+            return null;
         }
 
         static TrackedWaypoint getWaypoint(ClientboundTrackedWaypointPacket packet) {
@@ -288,6 +312,13 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
                         return (TrackedWaypoint) WAYPOINT_FIELD.get(packet);
                     } catch (Throwable ignored) {}
                 }
+                try {
+                    for (Method m : packet.getClass().getMethods()) {
+                        if (m.getParameterCount() == 0 && TrackedWaypoint.class.isAssignableFrom(m.getReturnType())) {
+                            return (TrackedWaypoint) m.invoke(packet);
+                        }
+                    }
+                } catch (Throwable ignored) {}
             }
             return null;
         }
@@ -295,7 +326,11 @@ public class LocatorPacketInterceptor extends ChannelOutboundHandlerAdapter {
         static ClientboundTrackedWaypointPacket createTrackPacket(TrackedWaypoint waypoint) {
             if (CONSTRUCTOR == null || OP_TRACK == null || waypoint == null) return null;
             try {
-                return CONSTRUCTOR.newInstance(OP_TRACK, waypoint);
+                if (OP_FIRST) {
+                    return CONSTRUCTOR.newInstance(OP_TRACK, waypoint);
+                } else {
+                    return CONSTRUCTOR.newInstance(waypoint, OP_TRACK);
+                }
             } catch (Throwable ignored) {
                 return null;
             }

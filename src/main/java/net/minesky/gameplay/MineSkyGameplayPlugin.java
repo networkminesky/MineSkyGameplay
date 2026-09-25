@@ -58,16 +58,15 @@ public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener 
         this.homesMenuManager = new HomesMenuManager(this);
         HomesCommand homesCmd = new HomesCommand(homesMenuManager);
         HomeTeleportCommand homeTpCmd = new HomeTeleportCommand(homesMenuManager);
+        GameplayCommand gameplayCommand = new GameplayCommand();
 
         if (getCommand("conquistas") != null) {
             getCommand("conquistas").setExecutor(new ConquistasCommand());
         }
-        if (getCommand("mineskygameplay") != null) {
-            getCommand("mineskygameplay").setExecutor(new GameplayCommand());
-        }
 
         registerCommand("homes", homesCmd, homesCmd);
         registerCommand("home", homeTpCmd, homeTpCmd);
+        registerCommand("mineskygameplay", gameplayCommand, gameplayCommand);
 
         if (getServer().getPluginManager().isPluginEnabled("MythicMobs")) {
             MythicHook.register(this);
@@ -141,7 +140,6 @@ public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener 
         }
     }
 
-    // API managers
     public DialogManager getDialogManager() { return dialogManager; }
     public LocatorManager getLocatorManager() {
         return locatorManager;
@@ -150,7 +148,6 @@ public final class MineSkyGameplayPlugin extends JavaPlugin implements Listener 
         return advancementsManager;
     }
 
-    // Plugin managers
     public HomesMenuManager getHomesMenuManager() {
         return homesMenuManager;
     }

@@ -16,6 +16,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.ServicePriority;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,6 +28,7 @@ public class LocatorManager implements LocatorAPI {
     private final Set<String> alwaysDisabledWorlds = ConcurrentHashMap.newKeySet();
     private boolean defaultWorldEnabled = true;
     private boolean debug = false;
+    private volatile boolean stopping = false;
 
     private final Map<UUID, Set<UUID>> allowedTargets = new ConcurrentHashMap<>();
     private final Map<UUID, Set<UUID>> hiddenTargets = new ConcurrentHashMap<>();
@@ -47,6 +49,7 @@ public class LocatorManager implements LocatorAPI {
     }
 
     public void start() {
+        this.stopping = false;
         Bukkit.getServicesManager().register(LocatorAPI.class, this, plugin, ServicePriority.Normal);
 
         this.listener = new LocatorListener(this, plugin);
@@ -59,6 +62,14 @@ public class LocatorManager implements LocatorAPI {
     }
 
     public void stop() {
+        this.stopping = true;
+        this.defaultWorldEnabled = true;
+        alwaysDisabledWorlds.clear();
+        globallyHiddenPlayers.clear();
+        hiddenTargets.clear();
+
+        restoreAllWaypointsBeforeStop();
+
         Bukkit.getServicesManager().unregister(LocatorAPI.class, this);
 
         if (this.listener != null) {
@@ -71,15 +82,90 @@ public class LocatorManager implements LocatorAPI {
         }
 
         allowedTargets.clear();
-        hiddenTargets.clear();
-        globallyHiddenPlayers.clear();
         globallyRevealedPlayers.clear();
         groups.clear();
         playerToGroup.clear();
         groupMutualVisibility.clear();
         clientTrackedMap.clear();
         alwaysEnabledWorlds.clear();
-        alwaysDisabledWorlds.clear();
+    }
+
+    private void restoreAllWaypointsBeforeStop() {
+        for (World world : Bukkit.getWorlds()) {
+            try {
+                ServerLevel level = ((CraftWorld) world).getHandle();
+                Object wm = level.getWaypointManager();
+                if (wm != null) {
+                    for (Field f : wm.getClass().getDeclaredFields()) {
+                        f.setAccessible(true);
+                        Object val = f.get(wm);
+                        if (val instanceof com.google.common.collect.Table<?, ?, ?> table) {
+                            Object[] values;
+                            synchronized (wm) {
+                                values = table.values().toArray();
+                            }
+                            for (Object conn : values) {
+                                if (conn != null) {
+                                    try {
+                                        Method connectMethod = conn.getClass().getMethod("connect");
+                                        connectMethod.setAccessible(true);
+                                        connectMethod.invoke(conn);
+                                    } catch (Throwable ignored) {}
+                                }
+                            }
+                        } else if (val instanceof Map<?, ?> map) {
+                            Object[] mapValues;
+                            synchronized (wm) {
+                                mapValues = map.values().toArray();
+                            }
+                            for (Object sub : mapValues) {
+                                if (sub instanceof Map<?, ?> subMap) {
+                                    for (Object conn : subMap.values()) {
+                                        if (conn != null) {
+                                            try {
+                                                Method connectMethod = conn.getClass().getMethod("connect");
+                                                connectMethod.setAccessible(true);
+                                                connectMethod.invoke(conn);
+                                            } catch (Throwable ignored) {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {}
+
+            List<Player> players = world.getPlayers();
+            for (Player viewer : players) {
+                ServerPlayer spViewer = ((CraftPlayer) viewer).getHandle();
+                for (Player target : players) {
+                    if (viewer.getUniqueId().equals(target.getUniqueId())) continue;
+                    try {
+                        ServerPlayer spTarget = ((CraftPlayer) target).getHandle();
+                        for (Method m : spTarget.getClass().getMethods()) {
+                            if (m.getName().equals("makeWaypointConnectionWith") && m.getParameterCount() == 1) {
+                                Object opt = m.invoke(spTarget, spViewer);
+                                if (opt instanceof Optional<?> optional && optional.isPresent()) {
+                                    Object conn = optional.get();
+                                    Method connectMethod = conn.getClass().getMethod("connect");
+                                    connectMethod.setAccessible(true);
+                                    connectMethod.invoke(conn);
+                                }
+                                break;
+                            }
+                        }
+                    } catch (Throwable ignored) {}
+                }
+            }
+        }
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            Channel channel = LocatorPacketInterceptor.getChannel(player);
+            if (channel != null && channel.isActive()) {
+                channel.flush();
+            }
+        }
     }
 
     public void loadConfig() {
@@ -102,6 +188,10 @@ public class LocatorManager implements LocatorAPI {
 
     public boolean isDebug() {
         return debug;
+    }
+
+    public boolean isStopping() {
+        return stopping;
     }
 
     @Override
@@ -167,6 +257,7 @@ public class LocatorManager implements LocatorAPI {
 
     @Override
     public boolean canSee(UUID viewerId, UUID targetId, World world) {
+        if (stopping) return true;
         if (viewerId.equals(targetId)) return true;
 
         if (globallyHiddenPlayers.contains(targetId)) return false;
@@ -203,7 +294,7 @@ public class LocatorManager implements LocatorAPI {
 
     @Override
     public void setPlayerVisibleTo(Player viewer, Player target, boolean visible) {
-        if (viewer == null || target == null) return;
+        if (viewer == null || target == null || stopping) return;
         UUID vId = viewer.getUniqueId();
         UUID tId = target.getUniqueId();
 
@@ -223,7 +314,7 @@ public class LocatorManager implements LocatorAPI {
 
     @Override
     public void resetPlayerVisibility(Player viewer, Player target) {
-        if (viewer == null || target == null) return;
+        if (viewer == null || target == null || stopping) return;
         UUID vId = viewer.getUniqueId();
         UUID tId = target.getUniqueId();
 
@@ -250,7 +341,7 @@ public class LocatorManager implements LocatorAPI {
 
     @Override
     public void hidePlayerGlobally(Player player) {
-        if (player == null) return;
+        if (player == null || stopping) return;
         UUID pId = player.getUniqueId();
         globallyHiddenPlayers.add(pId);
         globallyRevealedPlayers.remove(pId);
@@ -380,6 +471,7 @@ public class LocatorManager implements LocatorAPI {
     }
 
     public void sendUntrackPacket(Player viewer, UUID targetId) {
+        if (stopping) return;
         ClientboundTrackedWaypointPacket packet = ClientboundTrackedWaypointPacket.removeWaypoint(targetId);
         Channel channel = LocatorPacketInterceptor.getChannel(viewer);
         if (channel != null && channel.isActive()) {
@@ -388,7 +480,8 @@ public class LocatorManager implements LocatorAPI {
     }
 
     public void syncWaypoint(Player player) {
-        if (player == null || !player.isOnline()) return;
+        if (player == null || !player.isOnline() || stopping) return;
+        if (!plugin.isEnabled()) return;
 
         player.getScheduler().run(plugin, scheduledTask -> {
             try {
@@ -412,7 +505,15 @@ public class LocatorManager implements LocatorAPI {
     }
 
     public void handleJoin(Player player) {
-        syncWaypoint(player);
+        World world = player.getWorld();
+        if (isWorldDisabled(world)) {
+            for (Player other : world.getPlayers()) {
+                if (!canSee(player, other)) sendUntrackPacket(player, other.getUniqueId());
+                if (!canSee(other, player)) sendUntrackPacket(other, player.getUniqueId());
+            }
+        } else {
+            syncWaypoint(player);
+        }
     }
 
     public void handleQuit(Player player) {
